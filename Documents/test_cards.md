@@ -1,5 +1,5 @@
 # Test Cards
-## Round 1 Interview (before topic change)
+## Round 1 Interview (All refuted due to topic change)
 ### Hypothesis 1: Notification Gap
 **HYPOTHESIS**
 We believe that students miss or nearly miss deadlines because Blackboard does 
@@ -171,7 +171,7 @@ is an acceptable and trusted platform to deliver it.
    you feel about that?
 
 ## Round 2 Interview (after topic change)
-### Hypothesis 1: Platform Fragmentation
+### Hypothesis 1: Platform Fragmentation (Accepted)
 **HYPOTHESIS**
 We believe that students rely on third-party tools over university platforms because 
 no single university platform integrates timetables, deadlines and navigation, 
@@ -215,7 +215,7 @@ notification infrastructure is not reaching most students.
 
 ---
 
-### Hypothesis 2: Wayfinding Gap
+### Hypothesis 2: Wayfinding Gap (Refuted)
 **HYPOTHESIS**
 We believe that students can identify when classes occur but struggle to locate 
 unfamiliar classrooms efficiently, mostly at the start of each semester or when 
@@ -256,7 +256,7 @@ problem active across year levels.
 
 ---
 
-### Hypothesis 3: UQ Maps Discoverability
+### Hypothesis 3: UQ Maps Discoverability (Accepted)
 **HYPOTHESIS**
 We believe that students usually use apps like Google to navigate around campus, 
 remaining unaware or unengaged with UQ Maps' localized features, suggesting that 
@@ -295,7 +295,7 @@ not reaching students through current discovery channels.
 
 ---
 
-### Hypothesis 4: Deadline-Aware Navigation Gap
+### Hypothesis 4: Deadline-Aware Navigation Gap (Accepted)
 **HYPOTHESIS**
 We believe that students who navigate to class using existing tools still 
 experience uncertainty about whether they will arrive on time because current 
@@ -338,7 +338,7 @@ awareness, not just wayfinding.
 
 ---
 
-### Hypothesis 5: Navigation Mode Preference
+### Hypothesis 5: Navigation Mode Preference (Accepted)
 **HYPOTHESIS**
 A. Students experiencing time-constraint anxiety during campus navigation 
 would benefit more from pre-departure planning guidance than from live 
