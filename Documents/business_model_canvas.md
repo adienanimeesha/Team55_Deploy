@@ -27,3 +27,19 @@
 - Direct linking from timetable entries to UQ Maps for campus-specific navigation, eliminating the manual step of copying building names into Google Maps.
 
 - Word of mouth and peer recommendation, which interviews showed is how many students discover university tools in practice.
+
+- **Customer Relationships**
+
+- Automated, self-service interaction where the system handles contextual work (calculating travel time, sending departure reminders) so students do not have to.
+
+- Personalised, context-sensitive communication — for example, actionable departure alerts tied to specific classes rather than generic course announcements.
+
+- Low-friction onboarding that surfaces the tool proactively during orientation and first-week communications, rather than requiring students to discover it on their own.
+
+**Revenue Streams**
+
+- University-funded as part of student services infrastructure, since the product supports student engagement, retention, and on-time attendance.
+
+- No direct cost to students — the tool addresses a gap in the university's own digital ecosystem and should be treated as part of that infrastructure.
+
+- Potential licensing or partnership value if the solution proves effective and is adapted for other universities facing similar platform fragmentation.
