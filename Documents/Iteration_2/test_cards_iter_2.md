@@ -1,32 +1,28 @@
 # Iteration 2 Hypotheses
 
-## Round 1: Solution Validation (10 Participants)
-
 ### Hypothesis 1: Pre-Departure Planning Value
-We believe that students find it useful to know whether they will make it to their next class before they start walking, and that a tool showing their expected position along a route at any given time would reduce the uncertainty they currently experience when leaving for class.
-
+We believe that students find it useful to know whether they will make it to their next class before they start walking, and that a tool that lets them test different departure times and returns a clear YES or NO verdict reduces the uncertainty they currently experience when leaving for class.
+ 
 ### Hypothesis 2: Localised Routing Preference
 We believe that students would prefer a campus-specific navigation tool over Google Maps for between-class travel because localised pathways and shortcuts on campus produce more accurate travel time estimates than Google Maps, which frequently routes students the long way around.
-
+ 
 ### Hypothesis 3: Tool Adoption Over Habit
 We believe that students would choose to open a localised campus navigation tool instead of Google Maps if it demonstrably showed shorter, more accurate routes between buildings — even if Google Maps is their current default out of habit.
-
+ 
 ### Hypothesis 4: Relevance Beyond First Year
 We believe that a deadline-aware campus navigation tool remains relevant to students beyond their first weeks of semester because daily conditions such as walking speed, weather, and campus construction vary enough that even students on familiar routes benefit from a real-time pacing check.
-
----
-
-## Round 2: Design Validation (15 Participants)
-
-### Hypothesis 5: Slider Comprehension and Task Speed
-We believe that students can intuitively understand and interact with a time-based slider showing where they should be at each point during a campus walk without prior instruction, and can complete the full pre-departure planning task — from opening the app to feeling ready to walk — within 15 to 20 seconds, because the scrubbing interaction is familiar from video and audio players they already use daily.
-
-### Hypothesis 6: ETA Framing Over Blame
-We believe that students respond better to seeing a revised arrival time, such as 14.05, rather than an explicit message saying they are late, because it informs them of the situation without assigning blame and allows them to decide how to respond — whether to walk faster or 
-adjust their expectations.
-
-### Hypothesis 7: Campus Colour Scheme Aids Readability
-We believe that using UQ's purple as the primary navigation colour with a cream background and topology-based terrain colours makes the interface feel familiar and trustworthy to UQ students, and that a dark mode using lighter tones improves readability during low-light campus travel.
-
-### Hypothesis 8: Interface Clarity Under Time Pressure
-We believe that students can read and act on the key information shown during live navigation — current status, revised ETA, and route — within a few seconds while walking, because the interface prioritises the most critical information at the top and reduces visual clutter.
+ 
+### Hypothesis 5: Departure-Time Scrubber Comprehension
+We believe that students can intuitively understand and interact with the "What if I left…" departure scrubber without instruction — dragging it to test different leave times and reading the YES/NO verdict plus leave-by time as a clear, actionable answer — and can complete this pre-departure check within 15 to 20 seconds, because the scrubbing interaction is familiar from media players they already use daily.
+ 
+### Hypothesis 6: YES/NO Verdict Over Raw ETA
+We believe that students respond better to a binary YES/NO verdict paired with a specific leave-by time (e.g. "Yes ✓ — leave by 10:54") than to a raw arrival ETA alone, because the verdict tells them what to do rather than requiring them to calculate whether they will make it.
+ 
+### Hypothesis 7: Timetable Layout Preference
+We believe that the "Next-up hero" layout — which surfaces only the immediately upcoming class with full travel context — is more useful to students under time pressure than a full day list or vertical timeline, because it reduces the information students need to scan before deciding to act.
+ 
+### Hypothesis 8: Interface Clarity During Live Navigation
+We believe that students can read and act on the key information shown during live navigation — arrival time, on-track status, and current step — within a few seconds while walking, because the interface places the most critical information at the top and shows only one step at a time.
+ 
+### Hypothesis 9: Indoor Room-Finding Value
+We believe that students experience their highest navigation uncertainty in the last 60 seconds before class — inside the building, searching for the correct floor and door — and that step-by-step indoor guidance with landmark descriptions reduces this stress more than a floor plan alone.
