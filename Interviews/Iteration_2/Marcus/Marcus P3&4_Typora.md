@@ -1,4 +1,4 @@
-# Speaker-labelled Interview Transcript: Marcus P3 & P4
+# Marcus Interview Transcript P3 & P4
 
 ## Interview Information
 
@@ -128,6 +128,6 @@
 | P3 | I would delete something unuseful, but I think all of it is pretty useful. |
 | P4 | Yeah, I think all of it is pretty useful. |
 | P4 | I think I would use most of it. I probably would not use any other app. |
-| P3 or P4 | It would replace any other app I have been using. |
+| P3 | It would replace any other app I have been using. |
 | Marcus | Okay, that is all. Thank you so much. |
 | Eric | Thank you. Have a nice day. |
