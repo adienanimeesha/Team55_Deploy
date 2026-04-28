@@ -27,6 +27,90 @@ We believe that students can read and act on the key information shown during li
 ### Hypothesis 9: Indoor Room-Finding Value
 We believe that students experience their highest navigation uncertainty in the last 60 seconds before class — inside the building, searching for the correct floor and door — and that step-by-step indoor guidance with landmark descriptions reduces this stress more than a floor plan alone.
 
+## Interview Questions — Iteration 2
+
+**Screener**
+Are you a domestic or international student, and what year are you in?
+ 
+---
+ 
+**Q1**
+Walk me through what you do when you are between classes and unsure
+if you will make it on time — what do you open on your phone and
+what do you look at?
+ 
+---
+ 
+**Q2**
+Has Google Maps ever given you an inaccurate travel time on campus
+— what happened and why do you think it was off?
+ 
+---
+ 
+**Q3**
+We are building something that tells you whether you will make it
+between classes before you start walking — does that sound like
+something you would use?
+ 
+- Follow up if yes: What would make you open this instead of Google Maps?
+- Follow up if no: What would have to change for you to consider using it?
+---
+ 
+**Q4**
+Even in weeks where you already know your routes well — do you think
+something like this would still be useful, or only at the start of semester?
+ 
+---
+ 
+**Q5** *(Show timetable screen — Next-up hero variant)*
+Without me explaining anything, what does this screen tell you and
+what would you do next?
+ 
+- Follow up: Is there anything missing or confusing?
+---
+ 
+**Q6** *(Show pre-departure scrubber — YES/NO verdict screen)*
+Without me explaining anything, what do you think this screen is
+asking you to do?
+ 
+- Note: Start timing when the interviewee first sees the screen.
+ Stop when they say they feel ready to start walking.
+- Follow up: What does the YES or NO mean to you — is that
+ enough information to act on, or do you want something more?
+- Follow up: Would you prefer to see an arrival time instead of
+ a YES/NO — or is the YES/NO clearer?
+---—
+ 
+**Q7** *(Show live navigation screen — floating status variant)*
+If you were walking to class and this appeared on your screen,
+what is the first thing you notice and what would you do next?
+ 
+- Follow up: What is the one piece of information you would want
+ to see most urgently if you were running behind?
+---
+ 
+**Q8** *(Show indoor room-finding screens)*
+When you have found the building but not the room — is this the
+moment where you most need help, or does the problem feel solved
+once you reach the building entrance?
+ 
+- Follow up: Which of these three approaches feels most useful —
+ the floor plan, the step list with landmarks, or the photo with
+ a large arrow?
+---
+
+**Q9** *(Show smart departure notification)*
+If your phone showed this notification before class — would you
+tap it or dismiss it?
+ 
+- Follow up: Does the information feel specific enough to act on,
+ or does it feel like another generic reminder?
+---—
+ 
+**Q10**
+Is there anything on this prototype that felt confusing, unnecessary,
+or missing — what is the one thing you would change?
+
 ---
 
 ## Round 2 Interview
