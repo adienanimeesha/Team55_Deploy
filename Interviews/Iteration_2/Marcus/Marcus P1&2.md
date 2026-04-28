@@ -1,4 +1,5 @@
 Marcus	It would be fun if we record our conversation. Thank you so much. Let me start first.
+
 Marcus	Can you tell me, are you domestic students or international students?
 P1 & P2	We are both domestic students.
 Marcus	Could you walk me through what you do when you are between classes and unsure if you will make it on time? Do you open your phone or use an application to navigate?
