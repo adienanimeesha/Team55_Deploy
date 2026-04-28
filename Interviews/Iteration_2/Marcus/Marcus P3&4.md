@@ -5,7 +5,7 @@
 | Item         | Details                              |
 | ------------ | ------------------------------------ |
 | Interviewers | Marcus and Eric                      |
-| Participants | P1 and P2 in the original transcript |
+| Participants | P1 and P2 |
 
 ## Transcript
 
