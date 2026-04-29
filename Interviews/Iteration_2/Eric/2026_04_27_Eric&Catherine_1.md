@@ -2,11 +2,11 @@
 **Person 1 & Person 2**
 [Cath and Eric interview](https://uq.sharepoint.com/:u:/r/teams/Section_7620_22283/Shared%20Documents/55_Richard/Interview%20Recordings/Iteration%202/Eric/Cath%20and%20Eric%20interview%20.m4a?csf=1&web=1&e=BYs6hH)
 
-**Catherine:** Can you go? Okay, I'm gonna start. So, are you guys domestic or international students? Domestic. Domestic? I'm domestic as well.
+Can you go? Okay, I'm gonna start. So, are you guys domestic or international students? Domestic. Domestic? I'm domestic as well.
 
-  You said you're fifth year? You too? Yeah, like, well it's been fourth and a half. Four and a half. Oh. Fourth. Fourth year, technically. Okay. 
+You said you're fifth year? You too? Yeah, like, well it's been fourth and a half. Four and a half. Oh. Fourth. Fourth year, technically. Okay. 
 
-**Catherine:** So, can you guys walk me through, like, what you do and when you're between classes and I'm sure, like, if you'll make it on time? Like, do you open your phone or do you... I don't go to my classes. I don't go to my classes. I'm the wrong person at all.
+So, can you guys walk me through, like, what you do and when you're between classes and I'm sure, like, if you'll make it on time? Like, do you open your phone or do you... I don't go to my classes. I don't go to my classes. I'm the wrong person at all.
 
 Yeah. Like, maybe back when you were a freshman when you still went to classes? What did I do? I think I went to the right classes when I was starting as well. I went to my first, okay, math 1061. I met up with friends in between. I think I'd, yeah, I'd just be gone to the first year engineering center or something. You actually went to that? Yeah, I went to that.
 
@@ -18,11 +18,11 @@ Or Google Maps to find the class if it's the first time. Just look up the buildi
 
 Are you asking for directions or just in general? It can be both, though. For directions, I use Maps, but in general... Yeah, I guess I'll go on my phone if I don't have anything else to do. We are building something that tells you whether you will make it between classes before you start walking.
 
-**Catherine:** Does that sound like something you would use? How fast do you assume you're doing it? How fast? Wait, what do you mean? Like, do you mean do you have time to get to your next class? Yeah. If I'm very late trying to get to my class, I guess I'm probably not going to usually open something to check. If I've got time, I'm just booking it there. 
+Does that sound like something you would use? How fast do you assume you're doing it? How fast? Wait, what do you mean? Like, do you mean do you have time to get to your next class? Yeah. If I'm very late trying to get to my class, I guess I'm probably not going to usually open something to check. If I've got time, I'm just booking it there. 
 
 I'm just running. Wait. Sorry.
 
-**Catherine:** Has Google... Like, you said you use Google Maps, right? Has Google Maps ever given you, like, an accurate travel time on campus? Like, the timing is so off? Or, like, the routes are so long? I think there are UQ Maps as well, which are more accurate. I don't think they work on Android. At least they didn't when I started.
+Has Google... Like, you said you use Google Maps, right? Has Google Maps ever given you, like, an accurate travel time on campus? Like, the timing is so off? Or, like, the routes are so long? I think there are UQ Maps as well, which are more accurate. I don't think they work on Android. At least they didn't when I started.
 
 I don't have an Android, so... But it works on Apple. But, like, UQ Maps or Google Maps, which one do you prefer? I guess I can't use UQ, so Google. Yeah, I think, as well, I use Google.
 
