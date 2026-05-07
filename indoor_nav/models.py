@@ -18,6 +18,7 @@ class Node(models.Model):
 class Edge(models.Model):
     from_node = models.ForeignKey(Node, on_delete=models.CASCADE, related_name='edges_from')
     to_node = models.ForeignKey(Node, on_delete=models.CASCADE, related_name='edges_to')
+    weight = models.FloatField(default=1.0)
 
     def __str__(self):
         return f"{self.from_node_id} → {self.to_node_id}"
