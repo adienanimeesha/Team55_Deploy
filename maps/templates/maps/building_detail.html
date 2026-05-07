@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ building.name }} Floor Map</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f1ec;
+            color: #2d2926;
+        }
+
+        .page {
+            max-width: 1250px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .back-link {
+            color: #51247A;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pill {
+            background: white;
+            color: #51247A;
+            border-radius: 12px;
+            padding: 11px 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .pill.active {
+            background: #51247A;
+            color: white;
+        }
+
+        .title-card {
+            background: white;
+            border-radius: 22px;
+            padding: 22px;
+            box-shadow: 0 3px 14px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0 0 6px;
+            font-size: 34px;
+        }
+
+        .subtitle {
+            color: #6f6860;
+            line-height: 1.5;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        .map-card,
+        .directions-card {
+            background: white;
+            border-radius: 22px;
+            padding: 18px;
+            box-shadow: 0 3px 14px rgba(0,0,0,0.08);
+        }
+
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .map-title {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .legend {
+            color: #6f6860;
+            font-size: 14px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            background: #51247A;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .map {
+            position: relative;
+            width: 100%;
+            height: 620px;
+            background: #fbfaf7;
+            border: 2px solid #d4cdc4;
+            border-radius: 18px;
+            overflow: hidden;
+        }
+
+        .floor-svg,
+        .route-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .floor-svg {
+            z-index: 1;
+        }
+
+        .route-svg {
+            z-index: 3;
+        }
+
+        .floor-shell {
+            fill: rgba(235, 240, 243, 0.75);
+            stroke: #bfc5ca;
+            stroke-width: 0.8;
+        }
+
+        .corridor-shape {
+            fill: rgba(255, 255, 255, 0.82);
+            stroke: #d4cdc4;
+            stroke-width: 0.35;
+        }
+
+        .wall-line {
+            stroke: #87919a;
+            stroke-width: 0.55;
+            stroke-linecap: round;
+        }
+
+        .map-label {
+            position: absolute;
+            left: var(--label-x);
+            top: var(--label-y);
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            color: #8a8178;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: rgba(255, 255, 255, 0.72);
+            padding: 4px 7px;
+            border-radius: 999px;
+            border: 1px solid #ded8d0;
+        }
+
+        .entrance {
+            position: absolute;
+            left: var(--entrance-x);
+            top: var(--entrance-y);
+            background: #2d2926;
+            color: white;
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: bold;
+            z-index: 5;
+            transform: translate(-50%, -50%);
+        }
+
+        .room-node {
+            position: absolute;
+            left: var(--room-x);
+            top: var(--room-y);
+            width: var(--room-w);
+            height: var(--room-h);
+            border: 2px solid #87919a;
+            background: rgba(235, 240, 243, 0.96);
+            border-radius: 10px;
+            padding: 7px;
+            font-size: 13px;
+            text-decoration: none;
+            color: #2d2926;
+            z-index: 4;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .room-node:hover {
+            border-color: #51247A;
+            background: #efe6f7;
+        }
+
+        .room-node.active {
+            border: 3px solid #51247A;
+            background: #efe6f7;
+            color: #51247A;
+            font-weight: bold;
+        }
+
+        .room-code {
+            font-weight: 800;
+            display: block;
+            line-height: 1.1;
+        }
+
+        .room-name {
+            display: block;
+            font-size: 11px;
+            margin-top: 3px;
+            line-height: 1.15;
+        }
+
+        .directions-title {
+            font-size: 23px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .direction-summary {
+            background: #efe6f7;
+            border: 2px solid #51247A;
+            color: #51247A;
+            border-radius: 14px;
+            padding: 14px;
+            margin: 14px 0;
+            font-weight: bold;
+            line-height: 1.5;
+        }
+
+        .room-info {
+            color: #6f6860;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        .step {
+            display: flex;
+            gap: 12px;
+            padding: 13px 0;
+            border-bottom: 1px solid #eee;
+            line-height: 1.5;
+        }
+
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #51247A;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .room-list {
+            margin-top: 16px;
+            max-height: 430px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .room-list a {
+            display: block;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            color: #2d2926;
+            text-decoration: none;
+        }
+
+        .room-list a:hover,
+        .room-list a.active {
+            border-color: #51247A;
+            background: #efe6f7;
+            color: #51247A;
+        }
+
+        .hint {
+            color: #6f6860;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .top-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .map {
+                height: 420px;
+            }
+
+            .room-node {
+                font-size: 10px;
+                padding: 4px;
+            }
+
+            .room-name {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="page">
+    <div class="top-row">
+        <a class="back-link" href="{% url 'home' %}">← Back to search</a>
+
+        <div class="controls">
+            {% for floor in building.floors %}
+                <a class="pill {% if floor.level == current_floor.level %}active{% endif %}"
+                   href="{% url 'building_detail' building.id %}?floor={{ floor.level }}">
+                    {{ floor.label }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="title-card">
+        <h1>{{ building.name }} (Building {{ building.number }})</h1>
+        <div class="subtitle">{{ building.campus }} · {{ current_floor.label }}</div>
+    </div>
+
+    <div class="layout">
+        <div class="map-card">
+            <div class="map-header">
+                <div class="map-title">{{ current_floor.label }} map</div>
+                <div class="legend">
+                    <span><span class="legend-dot"></span>selected route</span>
+                </div>
+            </div>
+
+            <div class="map">
+                <svg class="floor-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <polygon class="floor-shell" points="{{ current_floor.outline_points }}"></polygon>
+
+                    {% for corridor in current_floor.corridors %}
+                        <rect
+                            class="corridor-shape"
+                            x="{{ corridor.x }}"
+                            y="{{ corridor.y }}"
+                            width="{{ corridor.w }}"
+                            height="{{ corridor.h }}"
+                            rx="1"
+                        ></rect>
+                    {% endfor %}
+
+                    {% for wall in current_floor.walls %}
+                        <line
+                            class="wall-line"
+                            x1="{{ wall.x1 }}"
+                            y1="{{ wall.y1 }}"
+                            x2="{{ wall.x2 }}"
+                            y2="{{ wall.y2 }}"
+                        ></line>
+                    {% endfor %}
+                </svg>
+
+                {% for label in current_floor.labels %}
+                    <div
+                        class="map-label"
+                        style="--label-x: {{ label.x }}%; --label-y: {{ label.y }}%;"
+                    >
+                        {{ label.text }}
+                    </div>
+                {% endfor %}
+
+                <div
+                    class="entrance"
+                    style="--entrance-x: {{ current_floor.entrance_x }}%; --entrance-y: {{ current_floor.entrance_y }}%;"
+                >
+                    Entrance
+                </div>
+
+                {% if selected_room %}
+                    <svg class="route-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polyline
+                            points="{{ selected_room.route_points }}"
+                            fill="none"
+                            stroke="#51247A"
+                            stroke-width="1.6"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-dasharray="2.2 1.6"
+                        />
+                    </svg>
+                {% endif %}
+
+                {% for room in current_floor.rooms %}
+                    <a
+                        class="room-node {% if selected_room and selected_room.code == room.code %}active{% endif %}"
+                        href="{% url 'building_detail' building.id %}?floor={{ current_floor.level }}&room={{ room.code }}"
+                        style="--room-x: {{ room.x }}%; --room-y: {{ room.y }}%; --room-w: {{ room.w }}%; --room-h: {{ room.h }}%;"
+                    >
+                        <span class="room-code">{{ room.code }}</span>
+                        <span class="room-name">{{ room.name }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="directions-card">
+            {% if selected_room %}
+                <div class="directions-title">{{ selected_room.code }}</div>
+                <div class="room-info">
+                    {{ selected_room.name }} · {{ selected_room.type }} · {{ selected_room.area }}
+                </div>
+
+                <div class="direction-summary">
+                    {{ selected_room.summary }}
+                </div>
+
+                {% for step in selected_room.steps %}
+                    <div class="step">
+                        <div class="step-number">{{ forloop.counter }}</div>
+                        <div>{{ step }}</div>
+                    </div>
+                {% endfor %}
+
+                <div class="room-list">
+                    <p class="hint">Choose another room:</p>
+
+                    {% for room in current_floor.rooms %}
+                        <a class="{% if selected_room.code == room.code %}active{% endif %}"
+                           href="{% url 'building_detail' building.id %}?floor={{ current_floor.level }}&room={{ room.code }}">
+                            <strong>{{ room.code }}</strong><br>
+                            {{ room.name }} · {{ room.area }}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="directions-title">Choose a room</div>
+                <p class="hint">
+                    Click a room on the drawn floor map to see dummy indoor directions.
+                </p>
+
+                <div class="room-list">
+                    {% for room in current_floor.rooms %}
+                        <a href="{% url 'building_detail' building.id %}?floor={{ current_floor.level }}&room={{ room.code }}">
+                            <strong>{{ room.code }}</strong><br>
+                            {{ room.name }} · {{ room.type }} · {{ room.area }}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</body>
+</html>

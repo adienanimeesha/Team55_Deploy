@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Building not found</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f1ec;
+            color: #2d2926;
+            padding: 40px;
+        }
+
+        .card {
+            background: white;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 3px 14px rgba(0,0,0,0.08);
+        }
+
+        a {
+            color: #51247A;
+            font-weight: bold;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Building not found</h1>
+        <p>The building you searched for does not exist in the dummy data yet.</p>
+        <a href="{% url 'home' %}">← Back to search</a>
+    </div>
+</body>
+</html>
