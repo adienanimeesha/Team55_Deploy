@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UQ Indoor Maps</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f1ec;
+            color: #2d2926;
+        }
+
+        .page {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .brand {
+            font-size: 28px;
+            font-weight: 800;
+            color: #51247A;
+        }
+
+        .campus-pill {
+            background: white;
+            border-radius: 999px;
+            padding: 10px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            color: #51247A;
+            font-weight: bold;
+        }
+
+        .hero {
+            background: white;
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 36px;
+        }
+
+        .subtitle {
+            color: #6f6860;
+            margin-bottom: 22px;
+        }
+
+        form {
+            display: flex;
+            gap: 12px;
+        }
+
+        input {
+            flex: 1;
+            padding: 15px 16px;
+            border: 2px solid #ddd;
+            border-radius: 14px;
+            font-size: 16px;
+        }
+
+        button {
+            background: #51247A;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 0 22px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .building-card {
+            background: white;
+            border-radius: 20px;
+            padding: 22px;
+            margin-bottom: 16px;
+            box-shadow: 0 3px 14px rgba(0,0,0,0.07);
+            border: 2px solid transparent;
+        }
+
+        .building-card:hover {
+            border-color: #51247A;
+        }
+
+        .building-title {
+            font-size: 24px;
+            font-weight: 800;
+        }
+
+        .building-meta {
+            color: #6f6860;
+            margin-top: 4px;
+        }
+
+        .building-description {
+            margin-top: 12px;
+            line-height: 1.5;
+        }
+
+        .main-link {
+            display: inline-block;
+            margin-top: 14px;
+            color: #51247A;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .room-matches {
+            margin-top: 16px;
+            border-top: 1px solid #eee;
+            padding-top: 12px;
+        }
+
+        .room-chip {
+            display: inline-block;
+            background: #efe6f7;
+            color: #51247A;
+            padding: 9px 12px;
+            border-radius: 999px;
+            margin: 4px 6px 4px 0;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .empty {
+            background: white;
+            padding: 22px;
+            border-radius: 18px;
+            color: #6f6860;
+        }
+
+        @media (max-width: 700px) {
+            form {
+                flex-direction: column;
+            }
+
+            button {
+                padding: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <div class="top-bar">
+        <div class="brand">UQ Indoor Maps</div>
+        <div class="campus-pill">St Lucia</div>
+    </div>
+
+    <div class="hero">
+        <h1>Find a building or room</h1>
+        <p class="subtitle">Search for Building 62, 63, 67, or a room code like 101, 225, 148, etc.</p>
+
+        <form method="get">
+            <input type="text" name="q" placeholder="Try: John Hines, 62, 101, Priestley, 148" value="{{ query }}">
+            <button type="submit">Search</button>
+        </form>
+    </div>
+
+    {% for result in results %}
+        <div class="building-card">
+            <div class="building-title">
+                {{ result.building.name }} (Building {{ result.building.number }})
+            </div>
+
+            <div class="building-meta">
+                {{ result.building.campus }} · {{ result.building.floors|length }} floor plan(s)
+            </div>
+
+            <p class="building-description">{{ result.building.description }}</p>
+
+            <a class="main-link" href="{% url 'building_detail' result.building.id %}">
+                Open floor plan →
+            </a>
+
+            {% if result.matching_rooms %}
+                <div class="room-matches">
+                    <strong>Matching rooms:</strong><br>
+
+                    {% for room in result.matching_rooms %}
+                        <a class="room-chip" href="{% url 'building_detail' result.building.id %}?floor={{ room.floor_level }}&room={{ room.code }}">
+                            {{ room.code }} · {{ room.name }} · {{ room.floor_label }}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% empty %}
+        <div class="empty">
+            No buildings or rooms found. Try searching “62”, “63”, “67”, “101”, “225”, or “148”.
+        </div>
+    {% endfor %}
+</div>
+</body>
+</html>
