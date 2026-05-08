@@ -1,0 +1,8 @@
+id,building,floor,type,label,lat,lng,uq_maps_identifier,from_id,to_id
+62_L1_entry_main,62,1,entry,Main Entry,-27.4975,153.0137,62-entry-main,,,
+62_L1_stairs,62,1,stairs,Stairs to Floor 2,-27.4976,153.0138,62-stairs-l1,,,
+63_L2_stairs,63,2,stairs,Stairs from Floor 1,-27.4977,153.0139,63-stairs-l2,,,
+63_L2_room_212,63,2,room,Room 212,-27.4978,153.0140,63-room-212,,,
+,,,,,,,,62_L1_entry_main,62_L1_stairs
+,,,,,,,,62_L1_stairs,63_L2_stairs
+,,,,,,,,63_L2_stairs,63_L2_room_212
