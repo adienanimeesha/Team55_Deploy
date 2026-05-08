@@ -19,5 +19,9 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+<<<<<<< Updated upstream
     path('', include('maps.urls')),
+=======
+    path('', include('navigation.urls')),
+>>>>>>> Stashed changes
 ]
