@@ -4,29 +4,37 @@ from indoor_nav.models import Node, Edge
 
 
 class Command(BaseCommand):
-    help = 'Import nodes and edges from a CSV file'
+    help = 'Import nodes and edges from one or more CSV files'
 
     def add_arguments(self, parser):
-        parser.add_argument('csv_file', type=str, help='Path to the CSV file')
+        parser.add_argument('csv_files', nargs='+', type=str, help='Path to CSV file(s)')
 
     def handle(self, *args, **options):
-        path = options['csv_file']
-        try:
-            file = open(path, newline='', encoding='utf-8')
-        except FileNotFoundError:
-            raise CommandError(f'File not found: {path}')
+        total_nodes = 0
+        total_edges = 0
 
-        with file:
-            rows = list(csv.DictReader(file))
+        for path in options['csv_files']:
+            self.stdout.write(f'Importing {path}...')
+            try:
+                file = open(path, newline='', encoding='utf-8')
+            except FileNotFoundError:
+                raise CommandError(f'File not found: {path}')
 
-        node_rows = [r for r in rows if not r.get('from_id') and not r.get('to_id')]
-        edge_rows = [r for r in rows if r.get('from_id') and r.get('to_id')]
+            with file:
+                rows = list(csv.DictReader(file))
 
-        nodes_created = sum(self._import_node(r) for r in node_rows)
-        edges_created = sum(self._import_edge(r) for r in edge_rows)
+            node_rows = [r for r in rows if not r.get('from_id') and not r.get('to_id')]
+            edge_rows = [r for r in rows if r.get('from_id') and r.get('to_id')]
+
+            nodes_created = sum(self._import_node(r) for r in node_rows)
+            edges_created = sum(self._import_edge(r) for r in edge_rows)
+            total_nodes += nodes_created
+            total_edges += edges_created
+
+            self.stdout.write(f'  {nodes_created} nodes, {edges_created} edges')
 
         self.stdout.write(self.style.SUCCESS(
-            f'Imported {nodes_created} nodes and {edges_created} edges'
+            f'Done. Total: {total_nodes} nodes, {total_edges} edges'
         ))
 
     def _import_node(self, row):
