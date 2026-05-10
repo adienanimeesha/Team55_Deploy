@@ -272,3 +272,158 @@ BUILDINGS = [
         ],
     },
 ]
+
+def make_room_63(code, name, room_type, area, x, y, w, h, location_hint):
+    return {
+        "code": code,
+        "name": name,
+        "type": room_type,
+        "area": area,
+        "x": x,
+        "y": y,
+        "w": w,
+        "h": h,
+        "route_points": auto_route(x, y, w, h),
+        "summary": f"{code} is {location_hint}.",
+        "steps": [
+            "Enter Physiology Lecture Theatres from the marked entrance.",
+            "Follow the main corridor shown on the floor map.",
+            f"Look for the room sign labelled {code}.",
+            f"{code} is {location_hint}.",
+        ],
+    }
+
+
+def make_floor_63(level, label, rooms, labels=None):
+    return {
+        "level": str(level),
+        "label": label,
+        "outline_points": "7,18 26,18 26,10 42,10 42,18 62,18 62,10 92,10 92,78 80,78 80,88 42,88 42,80 7,80",
+        "entrance_x": 10,
+        "entrance_y": 76,
+        "corridors": [
+            {"x": 10, "y": 58, "w": 72, "h": 8},
+            {"x": 24, "y": 28, "w": 8, "h": 36},
+            {"x": 46, "y": 46, "w": 34, "h": 8},
+            {"x": 78, "y": 30, "w": 8, "h": 48},
+        ],
+        "walls": [
+            {"x1": 10, "y1": 58, "x2": 82, "y2": 58},
+            {"x1": 10, "y1": 66, "x2": 82, "y2": 66},
+            {"x1": 24, "y1": 28, "x2": 24, "y2": 64},
+            {"x1": 32, "y1": 28, "x2": 32, "y2": 64},
+            {"x1": 46, "y1": 46, "x2": 80, "y2": 46},
+            {"x1": 46, "y1": 54, "x2": 80, "y2": 54},
+            {"x1": 78, "y1": 30, "x2": 78, "y2": 78},
+            {"x1": 86, "y1": 30, "x2": 86, "y2": 78},
+        ],
+        "labels": labels or [
+            {"text": "main corridor", "x": 29, "y": 54},
+            {"text": "lecture area", "x": 63, "y": 37},
+            {"text": "stairs", "x": 15, "y": 52},
+        ],
+        "rooms": rooms,
+    }
+
+
+BUILDING_63 = {
+    "id": "63",
+    "number": "63",
+    "name": "Physiology Lecture Theatres",
+    "campus": "St Lucia",
+    "description": "Indoor map prototype for Physiology Lecture Theatres levels 1 to 5.",
+    "floors": [
+        make_floor_63("1", "Level 1", [
+            make_room_63("197", "Room 197", "Large Room", "92.5 m²", 66, 28, 12, 26, "near the centre-right section of Level 1"),
+        ], labels=[
+            {"text": "open lecture area", "x": 42, "y": 42},
+            {"text": "main access", "x": 68, "y": 62},
+        ]),
+
+        make_floor_63("2", "Level 2", [
+            make_room_63("201", "Room 201", "Small Room", "2.5 m²", 47, 48, 5, 6, "near the small central room row"),
+            make_room_63("202", "Room 202", "Small Room", "2.5 m²", 42, 48, 5, 6, "beside Room 201"),
+            make_room_63("203", "Room 203", "Room", "14.7 m²", 13, 39, 9, 9, "inside the left-side room cluster"),
+            make_room_63("204", "Room 204", "Small Room", "5.3 m²", 13, 30, 8, 8, "above Room 203"),
+            make_room_63("205", "Room 205", "Room", "12.4 m²", 18, 21, 10, 9, "near the upper-left room cluster"),
+            make_room_63("206", "Room 206", "Small Room", "7.0 m²", 26, 30, 7, 8, "near Room 205"),
+            make_room_63("207", "Room 207", "Small Room", "2.7 m²", 26, 39, 7, 7, "beside Room 208"),
+            make_room_63("208", "Room 208", "Small Room", "5.1 m²", 26, 46, 7, 7, "near the left-side corridor"),
+            make_room_63("209", "Room 209", "Small Room", "0.5 m²", 33, 47, 4, 5, "in the central small-room row"),
+            make_room_63("209A", "Room 209A", "Small Room", "1.1 m²", 37, 47, 5, 5, "beside Room 209"),
+            make_room_63("210", "Room 210", "Small Room", "0.8 m²", 42, 47, 4, 5, "near Room 211"),
+            make_room_63("211", "Room 211", "Small Room", "0.6 m²", 46, 47, 4, 5, "beside Room 210"),
+            make_room_63("212", "Room 212", "Large Room", "53.8 m²", 36, 25, 13, 16, "near the central-left part of Level 2"),
+            make_room_63("214", "Room 214", "Room", "33.6 m²", 61, 14, 14, 11, "near the upper central seating area"),
+            make_room_63("215", "Room 215", "Room", "48.4 m²", 84, 13, 11, 13, "on the upper-right side of Level 2"),
+            make_room_63("217", "Room 217", "Room", "73.7 m²", 76, 20, 14, 12, "near the upper-right teaching area"),
+            make_room_63("218", "Room 218", "Room", "22.9 m²", 88, 31, 8, 8, "on the far-right side"),
+            make_room_63("219", "Room 219", "Room", "18.8 m²", 88, 40, 8, 8, "near Room 218"),
+            make_room_63("220", "Room 220", "Large Room", "58.6 m²", 62, 28, 14, 13, "near the central-right area"),
+            make_room_63("221", "Room 221", "Large Room", "59.4 m²", 74, 36, 13, 12, "near the right-side teaching area"),
+            make_room_63("222", "Room 222", "Large Room", "40.9 m²", 80, 49, 11, 10, "near the right-side corridor"),
+            make_room_63("223", "Room 223", "Room", "49.2 m²", 76, 67, 13, 9, "near the lower-right side of Level 2"),
+            make_room_63("224", "Room 224", "Teaching Room", "74.2 m²", 54, 66, 16, 10, "near the lower central area"),
+            make_room_63("225", "Large Lecture Theatre", "Lecture Theatre", "479.0 m²", 72, 30, 19, 20, "the largest lecture space on the right side of Level 2"),
+            make_room_63("231", "Room 231", "Room", "13.9 m²", 89, 59, 7, 7, "near the lower-right corridor"),
+            make_room_63("232", "Room 232", "Room", "26.3 m²", 88, 67, 8, 8, "near Room 233"),
+            make_room_63("233", "Room 233", "Large Room", "59.3 m²", 84, 76, 10, 8, "near the lower-right side"),
+            make_room_63("241", "Room 241", "Room", "28.3 m²", 18, 57, 20, 10, "near the lower-left entrance area"),
+            make_room_63("243", "Room 243", "Room", "13.8 m²", 33, 67, 8, 8, "near the lower-left corridor"),
+            make_room_63("292", "Room 292", "Large Room", "403.7 m²", 55, 20, 18, 16, "near the large central lecture area"),
+            make_room_63("296", "Room 296", "Room", "21.8 m²", 34, 36, 9, 8, "near the left-side room cluster"),
+            make_room_63("298", "Room 298", "Small Room", "6.6 m²", 91, 71, 6, 6, "near the far-right lower side"),
+            make_room_63("299", "Room 299", "Small Room", "7.1 m²", 91, 78, 6, 6, "near the far-right lower side"),
+        ]),
+
+        make_floor_63("2A", "Level 2A", [
+            make_room_63("251", "Room 251", "Large Room", "46.2 m²", 18, 29, 14, 14, "on the left side of Level 2A"),
+            make_room_63("252", "Room 252", "Small Room", "7.1 m²", 17, 45, 7, 7, "beside Room 251"),
+        ], labels=[
+            {"text": "lecture seating", "x": 44, "y": 39},
+            {"text": "upper walkway", "x": 68, "y": 43},
+            {"text": "stairs", "x": 12, "y": 49},
+        ]),
+
+        make_floor_63("3", "Level 3", [
+            make_room_63("348", "Room 348", "Large Room", "115.0 m²", 50, 34, 14, 16, "near the middle of Level 3"),
+            make_room_63("349", "Room 349", "Room", "17.6 m²", 24, 30, 10, 9, "near the left-side lecture area"),
+            make_room_63("352", "Room 352", "Room", "10.4 m²", 59, 52, 8, 8, "near the central corridor"),
+            make_room_63("353", "Room 353", "Room", "10.4 m²", 64, 43, 8, 8, "near Room 352"),
+            make_room_63("355", "Room 355", "Room", "11.8 m²", 78, 72, 10, 7, "near the lower-right corridor"),
+            make_room_63("358", "Room 358", "Large Room", "197.9 m²", 84, 19, 12, 18, "on the upper-right side of Level 3"),
+            make_room_63("360", "Room 360", "Large Room", "199.0 m²", 82, 55, 13, 14, "on the right side of Level 3"),
+            make_room_63("362", "Room 362", "Room", "10.8 m²", 43, 58, 9, 7, "near the left lecture seating area"),
+            make_room_63("397", "Room 397", "Large Room", "276.8 m²", 67, 35, 13, 20, "near the large central open area"),
+            make_room_63("398", "Room 398", "Room", "12.1 m²", 20, 54, 9, 8, "near the left corridor"),
+            make_room_63("399", "Room 399", "Small Room", "5.0 m²", 53, 55, 6, 7, "near Room 352"),
+        ]),
+
+        make_floor_63("4", "Level 4", [
+            make_room_63("462", "Room 462", "Room", "11.3 m²", 52, 53, 9, 8, "near the lower middle of Level 4"),
+            make_room_63("463", "Room 463", "Room", "11.3 m²", 59, 20, 9, 8, "near the upper middle of Level 4"),
+            make_room_63("465", "Room 465", "Room", "11.7 m²", 78, 72, 10, 7, "near the lower-right corridor"),
+            make_room_63("497", "Room 497", "Large Room", "416.5 m²", 65, 34, 18, 25, "in the large central-right lecture area"),
+            make_room_63("498", "Room 498", "Room", "9.1 m²", 85, 47, 8, 8, "near the right-side corridor"),
+        ], labels=[
+            {"text": "lecture seating", "x": 34, "y": 32},
+            {"text": "open theatre area", "x": 70, "y": 41},
+            {"text": "stairs", "x": 45, "y": 62},
+        ]),
+
+        make_floor_63("5", "Level 5", [
+            make_room_63("502", "Room 502", "Large Room", "46.6 m²", 51, 34, 12, 12, "near the centre-left of Level 5"),
+            make_room_63("504", "Room 504", "Room", "8.9 m²", 47, 53, 8, 7, "below Room 502"),
+            make_room_63("506", "Room 506", "Room", "29.9 m²", 86, 40, 10, 13, "on the right side of Level 5"),
+        ], labels=[
+            {"text": "plant / service area", "x": 31, "y": 43},
+            {"text": "central walkway", "x": 61, "y": 55},
+            {"text": "stairs", "x": 47, "y": 63},
+        ]),
+    ],
+}
+
+
+# Replace old Building 63 if it already exists, then add the new multi-floor one.
+BUILDINGS = [building for building in BUILDINGS if building["id"] != "63"]
+BUILDINGS.append(BUILDING_63)
