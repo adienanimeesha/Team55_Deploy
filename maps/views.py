@@ -1,4 +1,6 @@
 import json
+import re
+from django.db.models import Q
 from django.shortcuts import render
 from .data import BUILDINGS
 from indoor_nav.models import Node
@@ -18,15 +20,83 @@ def _missing_error(query, node, candidates):
     return None
 
 
+def _room_code_from_text(text):
+    match = re.search(r'\b([a-z]*\d+[a-z]*)\b', text.strip().lower())
+    return match.group(1) if match else ''
+
+
+def _building_number(text):
+    match = re.search(r'building\s*(\d+)|\b(\d+)\b', text.lower())
+    return (match.group(1) or match.group(2)) if match else ''
+
+
+def _node_candidate(node):
+    return {
+        "kind": "node",
+        "id": node.id,
+        "label": node.label,
+        "building": node.building,
+        "building_number": _building_number(node.building),
+        "floor": node.floor,
+        "type": node.type,
+        "room_code": _room_code_from_text(node.label),
+    }
+
+
+def _floorplan_candidates(query, node_candidates):
+    room_code = _room_code_from_text(query)
+    if not room_code:
+        return []
+
+    existing = {
+        (candidate["building_number"], candidate["floor"], candidate["room_code"])
+        for candidate in node_candidates
+    }
+    candidates = []
+
+    for building in BUILDINGS:
+        for floor in building["floors"]:
+            for room in floor["rooms"]:
+                if room["code"].lower() != room_code:
+                    continue
+
+                key = (building["number"], floor["level"], room_code)
+                if key in existing:
+                    continue
+
+                candidates.append({
+                    "kind": "floorplan",
+                    "label": f'{room["code"]} - {room["name"]}',
+                    "building": f'{building["name"]} (Building {building["number"]})',
+                    "building_id": building["id"],
+                    "building_number": building["number"],
+                    "floor": floor["level"],
+                    "floor_label": floor["label"],
+                    "type": room["type"],
+                    "room_code": room["code"],
+                })
+
+    return candidates
+
+
 def _resolve_node(query, node_id):
     if node_id:
         return Node.objects.filter(id=node_id).first(), []
     if not query:
         return None, []
-    matches = list(Node.objects.filter(label__icontains=query).order_by('building', 'floor', 'label'))
-    if len(matches) == 1:
+
+    room_code = _room_code_from_text(query)
+    lookup = Q(label__icontains=query)
+    if room_code:
+        lookup |= Q(label__istartswith=room_code)
+
+    matches = list(Node.objects.filter(lookup).order_by('building', 'floor', 'label'))
+    node_candidates = [_node_candidate(node) for node in matches]
+    candidates = node_candidates + _floorplan_candidates(query, node_candidates)
+
+    if len(candidates) == 1 and candidates[0]["kind"] == "node":
         return matches[0], []
-    return None, matches
+    return None, candidates
 
 
 def _floor_room_matches(floor, query):

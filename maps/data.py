@@ -807,3 +807,12 @@ BUILDING_69 = {
 # Replace old Building 67 and any old Building 69, then add the new Building 69.
 BUILDINGS = [building for building in BUILDINGS if building["id"] not in ["67", "69"]]
 BUILDINGS.append(BUILDING_69)
+
+
+# Prefer the files in Team-55/data for the frontend building and room maps.
+# The hardcoded data above is kept only as a fallback if the data folder is empty.
+from .data_loader import load_buildings_from_data_folder
+
+DATA_FOLDER_BUILDINGS = load_buildings_from_data_folder()
+if DATA_FOLDER_BUILDINGS:
+    BUILDINGS = DATA_FOLDER_BUILDINGS

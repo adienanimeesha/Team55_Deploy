@@ -77,6 +77,14 @@
             gap: 20px;
         }
 
+        .layout.building-62.floor-2,
+        .layout.building-62.floor-3,
+        .layout.building-62.floor-4,
+        .layout.building-62.floor-5,
+        .layout.building-62.floor-6 {
+            grid-template-columns: minmax(0, 2.35fr) minmax(280px, 0.9fr);
+        }
+
         .map-card,
         .directions-card {
             background: white;
@@ -121,6 +129,23 @@
             overflow: hidden;
         }
 
+        .map.real-layout {
+            aspect-ratio: var(--map-aspect, 2.42 / 1);
+            height: auto;
+            background: white;
+            border-color: #b9b9b9;
+        }
+
+        .map-inner {
+            position: absolute;
+            inset: 0;
+        }
+
+        .real-layout .map-inner {
+            transform: scale(var(--map-zoom, 1));
+            transform-origin: center center;
+        }
+
         .floor-svg,
         .route-svg {
             position: absolute;
@@ -136,6 +161,7 @@
 
         .route-svg {
             z-index: 3;
+            opacity: 0.48;
         }
 
         .floor-shell {
@@ -154,6 +180,18 @@
             stroke: #87919a;
             stroke-width: 0.55;
             stroke-linecap: round;
+        }
+
+        .real-layout .floor-shell {
+            fill: white;
+            stroke: #1f1f1f;
+            stroke-width: 0.35;
+        }
+
+        .real-layout .corridor-shape {
+            fill: white;
+            stroke: #1f1f1f;
+            stroke-width: 0.18;
         }
 
         .map-label {
@@ -217,10 +255,44 @@
             font-weight: bold;
         }
 
+        .real-layout .room-node {
+            border: 0.75px solid #1f1f1f;
+            border-radius: 0;
+            background: rgba(255, 255, 255, 0.96);
+            color: #1f1f1f;
+            padding: 0;
+            font-size: 10px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            line-height: 1.05;
+        }
+
+        .real-layout .room-node:hover,
+        .real-layout .room-node.active {
+            border: 1.25px solid #51247A;
+            background: rgba(239, 230, 247, 0.9);
+        }
+
+        .real-layout .room-node.circulation-node {
+            border-color: transparent;
+            background: rgba(255, 255, 255, 0.72);
+        }
+
+        .real-layout .room-node.circulation-node:hover,
+        .real-layout .room-node.circulation-node.active {
+            border: 0.75px solid #51247A;
+            background: rgba(239, 230, 247, 0.72);
+        }
+
         .room-code {
             font-weight: 800;
             display: block;
             line-height: 1.1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .room-name {
@@ -228,6 +300,17 @@
             font-size: 11px;
             margin-top: 3px;
             line-height: 1.15;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .real-layout .room-name {
+            display: block;
+            font-size: 6px;
+            margin-top: 1px;
+            max-height: 1.1em;
+            overflow: hidden;
         }
 
         .directions-title {
@@ -349,7 +432,7 @@
         <div class="subtitle">{{ building.campus }} · {{ current_floor.label }}</div>
     </div>
 
-    <div class="layout">
+    <div class="layout building-{{ building.number }} floor-{{ current_floor.level }}">
         <div class="map-card">
             <div class="map-header">
                 <div class="map-title">{{ current_floor.label }} map</div>
@@ -358,72 +441,74 @@
                 </div>
             </div>
 
-            <div class="map">
-                <svg class="floor-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <polygon class="floor-shell" points="{{ current_floor.outline_points }}"></polygon>
+            <div class="map {% if current_floor.real_layout %}real-layout{% endif %}" style="{% if current_floor.aspect_ratio %}--map-aspect: {{ current_floor.aspect_ratio }};{% endif %}{% if current_floor.map_zoom %} --map-zoom: {{ current_floor.map_zoom }};{% endif %}">
+                <div class="map-inner">
+                    <svg class="floor-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon class="floor-shell" points="{{ current_floor.outline_points }}"></polygon>
 
-                    {% for corridor in current_floor.corridors %}
-                        <rect
-                            class="corridor-shape"
-                            x="{{ corridor.x }}"
-                            y="{{ corridor.y }}"
-                            width="{{ corridor.w }}"
-                            height="{{ corridor.h }}"
-                            rx="1"
-                        ></rect>
-                    {% endfor %}
+                        {% for corridor in current_floor.corridors %}
+                            <rect
+                                class="corridor-shape"
+                                x="{{ corridor.x }}"
+                                y="{{ corridor.y }}"
+                                width="{{ corridor.w }}"
+                                height="{{ corridor.h }}"
+                                rx="{% if current_floor.real_layout %}0{% else %}1{% endif %}"
+                            ></rect>
+                        {% endfor %}
 
-                    {% for wall in current_floor.walls %}
-                        <line
-                            class="wall-line"
-                            x1="{{ wall.x1 }}"
-                            y1="{{ wall.y1 }}"
-                            x2="{{ wall.x2 }}"
-                            y2="{{ wall.y2 }}"
-                        ></line>
-                    {% endfor %}
-                </svg>
-
-                {% for label in current_floor.labels %}
-                    <div
-                        class="map-label"
-                        style="--label-x: {{ label.x }}%; --label-y: {{ label.y }}%;"
-                    >
-                        {{ label.text }}
-                    </div>
-                {% endfor %}
-
-                <div
-                    class="entrance"
-                    style="--entrance-x: {{ current_floor.entrance_x }}%; --entrance-y: {{ current_floor.entrance_y }}%;"
-                >
-                    Entrance
-                </div>
-
-                {% if selected_room %}
-                    <svg class="route-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        <polyline
-                            points="{{ selected_room.route_points }}"
-                            fill="none"
-                            stroke="#51247A"
-                            stroke-width="1.6"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-dasharray="2.2 1.6"
-                        />
+                        {% for wall in current_floor.walls %}
+                            <line
+                                class="wall-line"
+                                x1="{{ wall.x1 }}"
+                                y1="{{ wall.y1 }}"
+                                x2="{{ wall.x2 }}"
+                                y2="{{ wall.y2 }}"
+                            ></line>
+                        {% endfor %}
                     </svg>
-                {% endif %}
 
-                {% for room in current_floor.rooms %}
-                    <a
-                        class="room-node {% if selected_room and selected_room.code == room.code %}active{% endif %}"
-                        href="{% url 'building_detail' building.id %}?floor={{ current_floor.level }}&room={{ room.code }}"
-                        style="--room-x: {{ room.x }}%; --room-y: {{ room.y }}%; --room-w: {{ room.w }}%; --room-h: {{ room.h }}%;"
+                    {% for label in current_floor.labels %}
+                        <div
+                            class="map-label"
+                            style="--label-x: {{ label.x }}%; --label-y: {{ label.y }}%;"
+                        >
+                            {{ label.text }}
+                        </div>
+                    {% endfor %}
+
+                    <div
+                        class="entrance"
+                        style="--entrance-x: {{ current_floor.entrance_x }}%; --entrance-y: {{ current_floor.entrance_y }}%;"
                     >
-                        <span class="room-code">{{ room.code }}</span>
-                        <span class="room-name">{{ room.name }}</span>
-                    </a>
-                {% endfor %}
+                        Entrance
+                    </div>
+
+                    {% if selected_room %}
+                        <svg class="route-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <polyline
+                                points="{{ selected_room.route_points }}"
+                                fill="none"
+                                stroke="#51247A"
+                                stroke-width="{% if current_floor.real_layout %}0.7{% else %}1.6{% endif %}"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-dasharray="{% if current_floor.real_layout %}1.2 1.2{% else %}2.2 1.6{% endif %}"
+                            />
+                        </svg>
+                    {% endif %}
+
+                    {% for room in current_floor.rooms %}
+                        <a
+                            class="room-node {% if room.type == 'Corridor' %}circulation-node{% endif %} {% if selected_room and selected_room.code == room.code %}active{% endif %}"
+                            href="{% url 'building_detail' building.id %}?floor={{ current_floor.level }}&room={{ room.code }}"
+                            style="--room-x: {{ room.x }}%; --room-y: {{ room.y }}%; --room-w: {{ room.w }}%; --room-h: {{ room.h }}%;"
+                        >
+                            <span class="room-code">{{ room.code }}</span>
+                            <span class="room-name">{{ room.name }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
             </div>
         </div>
 
@@ -431,7 +516,7 @@
             {% if selected_room %}
                 <div class="directions-title">{{ selected_room.code }}</div>
                 <div class="room-info">
-                    {{ selected_room.name }} · {{ selected_room.type }} · {{ selected_room.area }}
+                    {{ selected_room.name }} · {{ selected_room.type }}{% if selected_room.area %} · {{ selected_room.area }}{% endif %}
                 </div>
 
                 <div class="direction-summary">
@@ -452,21 +537,21 @@
                         <a class="{% if selected_room.code == room.code %}active{% endif %}"
                            href="{% url 'building_detail' building.id %}?floor={{ current_floor.level }}&room={{ room.code }}">
                             <strong>{{ room.code }}</strong><br>
-                            {{ room.name }} · {{ room.area }}
+                            {{ room.name }}{% if room.area %} · {{ room.area }}{% endif %}
                         </a>
                     {% endfor %}
                 </div>
             {% else %}
                 <div class="directions-title">Choose a room</div>
                 <p class="hint">
-                    Click a room on the drawn floor map to see dummy indoor directions.
+                    Click a room on the generated floor map to see details loaded from the data folder.
                 </p>
 
                 <div class="room-list">
                     {% for room in current_floor.rooms %}
                         <a href="{% url 'building_detail' building.id %}?floor={{ current_floor.level }}&room={{ room.code }}">
                             <strong>{{ room.code }}</strong><br>
-                            {{ room.name }} · {{ room.type }} · {{ room.area }}
+                            {{ room.name }} · {{ room.type }}{% if room.area %} · {{ room.area }}{% endif %}
                         </a>
                     {% endfor %}
                 </div>

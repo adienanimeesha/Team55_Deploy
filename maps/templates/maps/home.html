@@ -2,186 +2,713 @@
 <html lang="en">
 <head>
     <title>UQ Indoor Maps</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <style>
-        body { margin: 0; font-family: Arial, sans-serif; background: #f4f1ec; color: #2d2926; }
-        .page { max-width: 1100px; margin: 0 auto; padding: 32px; }
+        :root {
+            --uq-purple: #51247A;
+            --uq-purple-soft: #efe6f7;
+            --ink: #2d2926;
+            --muted: #6f6860;
+            --map-bg: #f7f3eb;
+            --building: #d6d0c5;
+            --building-dark: #bdb5a8;
+            --path: rgba(255, 255, 255, 0.9);
+            --grass: #bfe7b7;
+            --water: #c9e8f0;
+        }
 
-        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
-        .brand { font-size: 28px; font-weight: 800; color: #51247A; }
-        .campus-pill { background: white; border-radius: 999px; padding: 10px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); color: #51247A; font-weight: bold; }
+        * {
+            box-sizing: border-box;
+        }
 
-        .hero { background: white; border-radius: 24px; padding: 28px; box-shadow: 0 4px 18px rgba(0,0,0,0.08); margin-bottom: 24px; }
-        .card { background: white; border-radius: 20px; padding: 28px; box-shadow: 0 4px 18px rgba(0,0,0,0.08); margin-bottom: 24px; }
-        h1 { margin: 0 0 8px; font-size: 32px; }
-        h2 { margin: 0 0 16px; font-size: 20px; color: #51247A; }
-        .subtitle { color: #6f6860; margin-bottom: 18px; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: var(--ink);
+            background: #f4f1ec;
+        }
 
-        .form-row { display: flex; gap: 12px; flex-wrap: wrap; }
-        input[type=text] { flex: 1; min-width: 160px; padding: 15px 16px; border: 2px solid #ddd; border-radius: 14px; font-size: 16px; }
-        .btn { background: #51247A; color: white; border: none; border-radius: 14px; padding: 0 22px; font-size: 16px; font-weight: bold; cursor: pointer; line-height: 52px; }
-        .btn-outline { background: white; color: #51247A; border: 2px solid #51247A; border-radius: 14px; padding: 10px 16px; font-size: 14px; font-weight: bold; cursor: pointer; text-decoration: none; display: block; margin-bottom: 10px; }
-        .btn-outline:hover { background: #efe6f7; }
+        .app {
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: 70px 1fr;
+        }
 
-        .confirmed { background: #efe6f7; border-radius: 10px; padding: 8px 14px; font-size: 14px; color: #51247A; font-weight: bold; margin-top: 12px; }
-        .error { background: #fff0f0; border: 2px solid #f5c6c6; border-radius: 14px; padding: 14px 18px; color: #c0392b; margin-top: 14px; }
-        .candidate-meta { font-size: 13px; color: #6f6860; margin-top: 2px; }
+        .topbar {
+            background: var(--uq-purple);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            box-shadow: 0 3px 16px rgba(0, 0, 0, 0.18);
+            z-index: 20;
+        }
 
-        .step { display: flex; align-items: flex-start; gap: 16px; padding: 12px 0; border-bottom: 1px solid #f0ece6; }
-        .step:last-child { border-bottom: none; }
-        .step-num { background: #51247A; color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; flex-shrink: 0; }
-        .step-label { font-size: 15px; }
-        .step-meta { font-size: 13px; color: #6f6860; margin-top: 3px; }
-        .tag { display: inline-block; background: #efe6f7; color: #51247A; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: bold; margin-left: 6px; }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-weight: 800;
+            font-size: 23px;
+        }
 
-        .building-card { background: white; border-radius: 20px; padding: 22px; margin-bottom: 16px; box-shadow: 0 3px 14px rgba(0,0,0,0.07); border: 2px solid transparent; }
-        .building-card:hover { border-color: #51247A; }
-        .building-title { font-size: 22px; font-weight: 800; }
-        .building-meta { color: #6f6860; margin-top: 4px; }
-        .building-description { margin-top: 12px; line-height: 1.5; }
-        .main-link { display: inline-block; margin-top: 14px; color: #51247A; font-weight: bold; text-decoration: none; }
-        .room-matches { margin-top: 16px; border-top: 1px solid #eee; padding-top: 12px; }
-        .room-chip { display: inline-block; background: #efe6f7; color: #51247A; padding: 9px 12px; border-radius: 999px; margin: 4px 6px 4px 0; font-weight: bold; text-decoration: none; }
-        .empty { background: white; padding: 22px; border-radius: 18px; color: #6f6860; }
+        .brand-mark {
+            width: 36px;
+            height: 36px;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            display: grid;
+            place-items: center;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0;
+        }
 
-        @media (max-width: 700px) {
-            .form-row { flex-direction: column; }
-            .btn { line-height: normal; padding: 14px; }
+        .top-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .top-pill {
+            background: white;
+            color: var(--uq-purple);
+            border-radius: 12px;
+            padding: 11px 14px;
+            font-weight: 800;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+        }
+
+        .main {
+            display: grid;
+            grid-template-columns: 390px minmax(0, 1fr);
+            min-height: 0;
+        }
+
+        .sidebar {
+            background: white;
+            border-right: 1px solid #e5ded6;
+            overflow-y: auto;
+            padding: 18px;
+            box-shadow: 5px 0 16px rgba(0, 0, 0, 0.08);
+            z-index: 10;
+        }
+
+        .panel {
+            border: 1px solid #ece6df;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 14px;
+            background: white;
+        }
+
+        .panel-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .hint {
+            color: var(--muted);
+            line-height: 1.4;
+            margin: 0 0 14px;
+            font-size: 14px;
+        }
+
+        .route-form {
+            display: grid;
+            gap: 10px;
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 26px 1fr;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid #ddd8d1;
+            border-radius: 12px;
+            padding: 9px 11px;
+            background: #fbfaf8;
+        }
+
+        .dot {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            justify-self: center;
+            background: var(--uq-purple);
+            box-shadow: 0 0 0 4px var(--uq-purple-soft);
+        }
+
+        .dot.to {
+            background: #2d2926;
+            box-shadow: 0 0 0 4px #eee9e3;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 15px;
+            color: var(--ink);
+            min-width: 0;
+        }
+
+        .btn {
+            border: none;
+            background: var(--uq-purple);
+            color: white;
+            border-radius: 12px;
+            padding: 13px 16px;
+            font-weight: 800;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        .search-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            border: 1px solid #ddd8d1;
+            border-radius: 12px;
+            padding: 8px;
+            background: #fbfaf8;
+        }
+
+        .search-row input {
+            padding: 6px 6px;
+        }
+
+        .mini-btn {
+            border: 1px solid var(--uq-purple);
+            color: var(--uq-purple);
+            background: white;
+            border-radius: 10px;
+            padding: 8px 11px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .confirmed,
+        .error {
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            line-height: 1.35;
+            font-size: 14px;
+        }
+
+        .confirmed {
+            background: var(--uq-purple-soft);
+            color: var(--uq-purple);
+            font-weight: 800;
+        }
+
+        .error {
+            background: #fff0f0;
+            color: #b53333;
+            border: 1px solid #f0b7b7;
+        }
+
+        .candidate-link,
+        .building-link,
+        .room-chip {
+            text-decoration: none;
+        }
+
+        .candidate-link {
+            display: block;
+            border: 1px solid #ded8d0;
+            border-radius: 12px;
+            padding: 11px;
+            color: var(--ink);
+            margin-top: 8px;
+        }
+
+        .candidate-link:hover,
+        .building-card:hover {
+            border-color: var(--uq-purple);
+            background: #fbf7ff;
+        }
+
+        .candidate-meta,
+        .building-meta,
+        .step-meta {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 3px;
+        }
+
+        .route-summary {
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+
+        .step {
+            display: grid;
+            grid-template-columns: 28px 1fr;
+            gap: 10px;
+            padding: 11px 0;
+            border-top: 1px solid #eee9e3;
+        }
+
+        .step-num {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: var(--uq-purple);
+            color: white;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .tag {
+            display: inline-block;
+            margin-left: 5px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--uq-purple-soft);
+            color: var(--uq-purple);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .building-card {
+            display: block;
+            border: 1px solid #ece6df;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 10px;
+            color: var(--ink);
+            background: white;
+        }
+
+        .building-title {
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .building-description {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .room-matches {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee9e3;
+        }
+
+        .room-chip {
+            display: inline-block;
+            background: var(--uq-purple-soft);
+            color: var(--uq-purple);
+            padding: 7px 9px;
+            border-radius: 999px;
+            margin: 4px 4px 0 0;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .empty {
+            color: var(--muted);
+            line-height: 1.4;
+        }
+
+        .map-wrap {
+            position: relative;
+            overflow: hidden;
+            background: var(--water);
+        }
+
+        .map-canvas {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 82% 76%, rgba(135, 207, 123, 0.55) 0 6%, transparent 6.3%),
+                radial-gradient(circle at 68% 27%, rgba(135, 207, 123, 0.48) 0 7%, transparent 7.3%),
+                linear-gradient(142deg, transparent 0 74%, rgba(198, 232, 240, 0.95) 74.2% 100%),
+                var(--map-bg);
+        }
+
+        .map-toolbar {
+            position: absolute;
+            top: 18px;
+            right: 22px;
+            display: flex;
+            gap: 10px;
+            z-index: 8;
+        }
+
+        .map-control {
+            background: white;
+            color: var(--uq-purple);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-weight: 800;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.16);
+        }
+
+        .road,
+        .walkway {
+            position: absolute;
+            transform-origin: left center;
+            background: white;
+            box-shadow: 0 0 0 2px rgba(210, 205, 196, 0.9);
+            opacity: 0.95;
+        }
+
+        .road {
+            height: 34px;
+            border-radius: 999px;
+        }
+
+        .walkway {
+            height: 12px;
+            border-radius: 999px;
+        }
+
+        .road.a { left: 4%; top: 43%; width: 52%; transform: rotate(-16deg); }
+        .road.b { left: 40%; top: 53%; width: 50%; transform: rotate(5deg); }
+        .road.c { left: 53%; top: 23%; width: 36%; transform: rotate(62deg); }
+        .walkway.a { left: 12%; top: 29%; width: 38%; transform: rotate(15deg); }
+        .walkway.b { left: 24%; top: 72%; width: 45%; transform: rotate(-18deg); }
+        .walkway.c { left: 62%; top: 62%; width: 26%; transform: rotate(30deg); }
+        .walkway.d { left: 70%; top: 34%; width: 20%; transform: rotate(-12deg); }
+
+        .green-space {
+            position: absolute;
+            background: var(--grass);
+            opacity: 0.9;
+            clip-path: polygon(10% 8%, 88% 0, 100% 58%, 64% 100%, 0 80%);
+        }
+
+        .green-space.one { left: 64%; top: 6%; width: 18%; height: 22%; }
+        .green-space.two { left: 75%; top: 70%; width: 16%; height: 18%; }
+
+        .building-shape {
+            position: absolute;
+            display: block;
+            background: rgba(211, 205, 194, 0.94);
+            border: 2px solid rgba(110, 101, 90, 0.35);
+            color: var(--ink);
+            text-decoration: none;
+            box-shadow: 0 10px 28px rgba(67, 55, 44, 0.16);
+        }
+
+        .building-shape:hover,
+        .building-shape.active {
+            border-color: #35a852;
+            box-shadow: inset 0 0 0 4px rgba(53, 168, 82, 0.38), 0 12px 30px rgba(67, 55, 44, 0.2);
+        }
+
+        .building-label {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-weight: 800;
+            font-size: clamp(16px, 1.8vw, 28px);
+            line-height: 1.08;
+            text-shadow: 0 2px 0 white, 0 -2px 0 white, 2px 0 0 white, -2px 0 0 white;
+            width: 92%;
+        }
+
+        .b62 {
+            left: 8%;
+            top: 20%;
+            width: 49%;
+            height: 27%;
+            transform: rotate(18deg);
+            clip-path: polygon(0 18%, 100% 0, 96% 54%, 43% 68%, 36% 100%, 15% 96%, 22% 68%, 3% 66%);
+        }
+
+        .b63 {
+            left: 18%;
+            top: 54%;
+            width: 35%;
+            height: 24%;
+            transform: rotate(17deg);
+            clip-path: polygon(0 10%, 92% 0, 100% 72%, 28% 100%, 20% 66%, 6% 64%);
+        }
+
+        .b67 {
+            left: 60%;
+            top: 33%;
+            width: 31%;
+            height: 32%;
+            transform: rotate(17deg);
+            clip-path: polygon(14% 0, 88% 4%, 100% 42%, 90% 100%, 18% 88%, 0 40%);
+        }
+
+        .poi-label {
+            position: absolute;
+            padding: 5px 8px;
+            border-radius: 7px;
+            background: rgba(255, 255, 255, 0.78);
+            font-size: 13px;
+            font-weight: 800;
+            color: #4f4840;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.12);
+        }
+
+        .poi-label.bike { left: 26%; top: 14%; }
+        .poi-label.food { left: 11%; top: 36%; }
+        .poi-label.toilet { right: 6%; top: 61%; }
+
+        .map-search {
+            position: absolute;
+            left: 22px;
+            top: 18px;
+            width: min(410px, calc(100% - 44px));
+            background: white;
+            border-radius: 14px;
+            padding: 12px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
+            z-index: 9;
+        }
+
+        .map-search .search-row {
+            margin: 0;
+        }
+
+        .focus-note {
+            position: absolute;
+            left: 22px;
+            bottom: 18px;
+            width: min(430px, calc(100% - 44px));
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 14px;
+            padding: 14px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+            z-index: 9;
+            line-height: 1.4;
+            color: var(--muted);
+        }
+
+        .focus-note strong {
+            color: var(--ink);
+        }
+
+        @media (max-width: 920px) {
+            .app {
+                grid-template-rows: auto auto;
+            }
+
+            .topbar {
+                padding: 16px;
+                gap: 12px;
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .main {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .sidebar {
+                order: 2;
+                border-right: none;
+                box-shadow: none;
+            }
+
+            .map-wrap {
+                order: 1;
+                height: 520px;
+            }
+
+            .map-toolbar {
+                top: auto;
+                bottom: 92px;
+                right: 16px;
+            }
         }
     </style>
 </head>
 <body>
-<div class="page">
-
-    <div class="top-bar">
-        <div class="brand">UQ Indoor Maps</div>
-        <div class="campus-pill">St Lucia</div>
-    </div>
-
-    <!-- Combined hero + directions -->
-    <div class="hero">
-        <h1>Find a building or room</h1>
-        <p class="subtitle">Search for Building 62, 63, 67, or a room code like 101, 225, 148, etc.</p>
-        <form method="get" class="form-row">
-            {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
-            {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
-            <input type="text" name="from" placeholder="From (e.g. Room 101, Stairs, Lift)" value="{{ from_q }}">
-            <input type="text" name="to" placeholder="To (e.g. Room 212, Subway)" value="{{ to_q }}">
-            <button type="submit" class="btn">Go</button>
-        </form>
-
-        {% if from_node %}
-            <div class="confirmed">From: {{ from_node.label }} — {{ from_node.building }}, Floor {{ from_node.floor }}</div>
-        {% endif %}
-        {% if to_node %}
-            <div class="confirmed">To: {{ to_node.label }} — {{ to_node.building }}, Floor {{ to_node.floor }}</div>
-        {% endif %}
-
-        {% if route_error %}
-            <div class="error">{{ route_error }}</div>
-        {% endif %}
-    </div>
-
-    {% if from_candidates %}
-        <div class="card">
-            <h2>Multiple matches for "{{ from_q }}" — which one did you mean?</h2>
-            {% for node in from_candidates %}
-                <a class="btn-outline" href="?from_id={{ node.id }}&from={{ from_q }}&to={{ to_q }}{% if to_id %}&to_id={{ to_id }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
-                    {{ node.label }}
-                    <div class="candidate-meta">{{ node.building }} · Floor {{ node.floor }} · {{ node.type }}</div>
-                </a>
-            {% endfor %}
+<div class="app">
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-mark">UQ</div>
+            <div>Indoor Maps</div>
         </div>
-    {% endif %}
-
-    {% if to_candidates %}
-        <div class="card">
-            <h2>Multiple matches for "{{ to_q }}" — which one did you mean?</h2>
-            {% for node in to_candidates %}
-                <a class="btn-outline" href="?to_id={{ node.id }}&to={{ to_q }}&from={{ from_q }}{% if from_id %}&from_id={{ from_id }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
-                    {{ node.label }}
-                    <div class="candidate-meta">{{ node.building }} · Floor {{ node.floor }} · {{ node.type }}</div>
-                </a>
-            {% endfor %}
+        <div class="top-actions">
+            <div class="top-pill">St Lucia</div>
+            <div class="top-pill">Supported buildings</div>
         </div>
-    {% endif %}
+    </header>
 
-    {% if path %}
-        {% with path|last as last_node %}
-        <div class="card">
-            <strong>{{ path|length|add:"-1" }} step{{ path|length|add:"-1"|pluralize }}</strong>
-            from <strong>{{ path.0.label }}</strong> to <strong>{{ last_node.label }}</strong>
+    <main class="main">
+        <aside class="sidebar">
+            <section class="panel">
+                <div class="panel-title">Plan a route</div>
+                <p class="hint">Search by room, stair, lift, or building. Routes use the indoor navigation data when matching nodes exist.</p>
+                <form method="get" class="route-form">
+                    {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
+                    {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
+                    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+                    <label class="input-row">
+                        <span class="dot"></span>
+                        <input type="text" name="from" placeholder="From, e.g. 101 or Building 62" value="{{ from_q }}">
+                    </label>
+                    <label class="input-row">
+                        <span class="dot to"></span>
+                        <input type="text" name="to" placeholder="To, e.g. 212 or stairs" value="{{ to_q }}">
+                    </label>
+                    <button type="submit" class="btn">Get directions</button>
+                </form>
 
-            {% if path_coords %}
-                <div id="map" style="height: 360px; border-radius: 14px; margin-top: 20px;"></div>
-            {% endif %}
+                {% if from_node %}
+                    <div class="confirmed">From: {{ from_node.label }}<br>{{ from_node.building }} · Floor {{ from_node.floor }}</div>
+                {% endif %}
+                {% if to_node %}
+                    <div class="confirmed">To: {{ to_node.label }}<br>{{ to_node.building }} · Floor {{ to_node.floor }}</div>
+                {% endif %}
+                {% if route_error %}
+                    <div class="error">{{ route_error }}</div>
+                {% endif %}
+            </section>
 
-            <div style="margin-top: 20px;">
-                {% for node in path %}
-                    <div class="step">
-                        <div class="step-num">{{ forloop.counter }}</div>
-                        <div>
-                            <div class="step-label">
-                                {{ node.label }}<span class="tag">{{ node.type }}</span>
-                            </div>
-                            <div class="step-meta">{{ node.building }} · Floor {{ node.floor }}</div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endwith %}
-    {% endif %}
-
-    {% for result in results %}
-        <div class="building-card">
-            <div class="building-title">{{ result.building.name }} (Building {{ result.building.number }})</div>
-            <div class="building-meta">{{ result.building.campus }} · {{ result.building.floors|length }} floor plan(s)</div>
-            <p class="building-description">{{ result.building.description }}</p>
-            <a class="main-link" href="{% url 'building_detail' result.building.id %}">Open floor plan →</a>
-            {% if result.matching_rooms %}
-                <div class="room-matches">
-                    <strong>Matching rooms:</strong><br>
-                    {% for room in result.matching_rooms %}
-                        <a class="room-chip" href="{% url 'building_detail' result.building.id %}?floor={{ room.floor_level }}&room={{ room.code }}">
-                            {{ room.code }} · {{ room.name }} · {{ room.floor_label }}
-                        </a>
+            {% if from_candidates %}
+                <section class="panel">
+                    <div class="panel-title">Choose start</div>
+                    {% for candidate in from_candidates %}
+                        {% if candidate.kind == "node" %}
+                            <a class="candidate-link" href="?from_id={{ candidate.id }}&from={{ from_q }}&to={{ to_q }}{% if to_id %}&to_id={{ to_id }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
+                                <strong>{{ candidate.label }}</strong>
+                                <div class="candidate-meta">{{ candidate.building }} · Floor {{ candidate.floor }} · {{ candidate.type }}</div>
+                            </a>
+                        {% else %}
+                            <a class="candidate-link" href="{% url 'building_detail' candidate.building_id %}?floor={{ candidate.floor }}&room={{ candidate.room_code }}">
+                                <strong>{{ candidate.label }}</strong>
+                                <div class="candidate-meta">{{ candidate.building }} · {{ candidate.floor_label }} · floorplan only</div>
+                            </a>
+                        {% endif %}
                     {% endfor %}
-                </div>
+                </section>
             {% endif %}
-        </div>
-    {% empty %}
-        <div class="empty">No buildings or rooms found. Try "62", "63", "67", "101", "225", or "148".</div>
-    {% endfor %}
 
+            {% if to_candidates %}
+                <section class="panel">
+                    <div class="panel-title">Choose destination</div>
+                    {% for candidate in to_candidates %}
+                        {% if candidate.kind == "node" %}
+                            <a class="candidate-link" href="?to_id={{ candidate.id }}&to={{ to_q }}&from={{ from_q }}{% if from_id %}&from_id={{ from_id }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
+                                <strong>{{ candidate.label }}</strong>
+                                <div class="candidate-meta">{{ candidate.building }} · Floor {{ candidate.floor }} · {{ candidate.type }}</div>
+                            </a>
+                        {% else %}
+                            <a class="candidate-link" href="{% url 'building_detail' candidate.building_id %}?floor={{ candidate.floor }}&room={{ candidate.room_code }}">
+                                <strong>{{ candidate.label }}</strong>
+                                <div class="candidate-meta">{{ candidate.building }} · {{ candidate.floor_label }} · floorplan only</div>
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+                </section>
+            {% endif %}
+
+            {% if path %}
+                {% with path|last as last_node %}
+                    <section class="panel">
+                        <div class="route-summary">{{ path|length|add:"-1" }} step{{ path|length|add:"-1"|pluralize }} from {{ path.0.label }} to {{ last_node.label }}</div>
+                        {% for node in path %}
+                            <div class="step">
+                                <div class="step-num">{{ forloop.counter }}</div>
+                                <div>
+                                    <div>{{ node.label }}<span class="tag">{{ node.type }}</span></div>
+                                    <div class="step-meta">{{ node.building }} · Floor {{ node.floor }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </section>
+                {% endwith %}
+            {% endif %}
+
+            <section class="panel">
+                <div class="panel-title">Buildings</div>
+                <p class="hint">The overview is focused on the buildings loaded by the project data folder.</p>
+
+                <form method="get" class="search-row">
+                    {% if from_q %}<input type="hidden" name="from" value="{{ from_q }}">{% endif %}
+                    {% if to_q %}<input type="hidden" name="to" value="{{ to_q }}">{% endif %}
+                    {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
+                    {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
+                    <input type="text" name="q" placeholder="Search buildings or rooms" value="{{ query }}">
+                    <button type="submit" class="mini-btn">Search</button>
+                </form>
+            </section>
+
+            {% for result in results %}
+                <a class="building-card building-link" href="{% url 'building_detail' result.building.id %}">
+                    <div class="building-title">{{ result.building.name }} (Building {{ result.building.number }})</div>
+                    <div class="building-meta">{{ result.building.campus }} · {{ result.building.floors|length }} floor plan(s)</div>
+                    <p class="building-description">{{ result.building.description }}</p>
+                </a>
+                {% if result.matching_rooms %}
+                    <div class="room-matches">
+                        {% for room in result.matching_rooms %}
+                            <a class="room-chip" href="{% url 'building_detail' result.building.id %}?floor={{ room.floor_level }}&room={{ room.code }}">
+                                {{ room.code }} · {{ room.floor_label }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% empty %}
+                <section class="panel empty">No buildings or rooms found. Try 62, 63, 67, 101, 225, or 148.</section>
+            {% endfor %}
+        </aside>
+
+        <section class="map-wrap">
+            <div class="map-canvas">
+                <div class="green-space one"></div>
+                <div class="green-space two"></div>
+                <div class="road a"></div>
+                <div class="road b"></div>
+                <div class="road c"></div>
+                <div class="walkway a"></div>
+                <div class="walkway b"></div>
+                <div class="walkway c"></div>
+                <div class="walkway d"></div>
+
+                <a class="building-shape b62 active" href="{% url 'building_detail' '62' %}">
+                    <span class="building-label">John Hines<br>(Building 62)</span>
+                </a>
+                <a class="building-shape b63" href="{% url 'building_detail' '63' %}">
+                    <span class="building-label">Physiology Lecture Theatres<br>(Building 63)</span>
+                </a>
+                <a class="building-shape b67" href="{% url 'building_detail' '67' %}">
+                    <span class="building-label">Building 67<br>Teaching Rooms</span>
+                </a>
+
+                <div class="poi-label bike">Bike racks</div>
+                <div class="poi-label food">Vending machines</div>
+                <div class="poi-label toilet">Accessible toilets</div>
+            </div>
+
+            <div class="map-search">
+                <form method="get" class="search-row">
+                    <input type="text" name="q" placeholder="Search in St Lucia" value="{{ query }}">
+                    <button type="submit" class="mini-btn">Go</button>
+                </form>
+            </div>
+
+            <div class="map-toolbar">
+                <div class="map-control">St Lucia</div>
+                <div class="map-control">Floor 1</div>
+            </div>
+
+            <div class="focus-note">
+                <strong>Focused map view</strong><br>
+                This prototype shows the supported indoor-map area instead of the whole UQ campus, so room search and floor plans line up with the loaded backend data.
+            </div>
+        </section>
+    </main>
 </div>
-
-{% if path_coords %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+X/ibW7URHiY45cA=" crossorigin=""></script>
-<script>
-(function () {
-    var coords = {{ path_coords|safe }};
-    if (coords.length < 2) return;
-
-    var map = L.map('map');
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-
-    var latlngs = coords.map(function (c) { return [c.lat, c.lng]; });
-    L.polyline(latlngs, { color: '#51247A', weight: 5, opacity: 0.8 }).addTo(map);
-
-    var startIcon = L.divIcon({ className: '', html: '<div style="background:#2ecc71;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
-    var endIcon   = L.divIcon({ className: '', html: '<div style="background:#51247A;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
-
-    L.marker(latlngs[0], { icon: startIcon }).addTo(map).bindPopup(coords[0].label);
-    L.marker(latlngs[latlngs.length - 1], { icon: endIcon }).addTo(map).bindPopup(coords[coords.length - 1].label);
-
-    map.fitBounds(L.polyline(latlngs).getBounds(), { padding: [40, 40] });
-}());
-</script>
-{% endif %}
 </body>
 </html>
