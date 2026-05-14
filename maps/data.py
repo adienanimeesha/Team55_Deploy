@@ -5,7 +5,20 @@ def auto_route(x, y, w, h):
     return f"8,82 20,82 20,55 {cx:.1f},55 {cx:.1f},{cy:.1f}"
 
 
-def make_room(code, name, room_type, area, x, y, w, h, location_hint):
+def make_room(code, name, room_type, area, x, y, w, h, route_or_location_hint, location_hint=None):
+    """
+    Supports both formats:
+
+    1. make_room(code, name, type, area, x, y, w, h, location_hint)
+    2. make_room(code, name, type, area, x, y, w, h, route_points, location_hint)
+    """
+
+    if location_hint is None:
+        route_points = auto_route(x, y, w, h)
+        location_hint = route_or_location_hint
+    else:
+        route_points = route_or_location_hint
+
     return {
         "code": code,
         "name": name,
@@ -15,10 +28,10 @@ def make_room(code, name, room_type, area, x, y, w, h, location_hint):
         "y": y,
         "w": w,
         "h": h,
-        "route_points": auto_route(x, y, w, h),
+        "route_points": route_points,
         "summary": f"{code} is {location_hint}.",
         "steps": [
-            "Enter John Hines Building from the marked entrance.",
+            "Enter the building from the marked entrance.",
             "Follow the main corridor shown on the floor map.",
             f"Look for the room sign labelled {code}.",
             f"{code} is {location_hint}.",
@@ -68,44 +81,112 @@ BUILDINGS = [
         "campus": "St Lucia",
         "description": "Indoor map prototype for John Hines Building levels 1 to 6.",
         "floors": [
-            {
+            { 
                 "level": "1",
-                "label": "Level 1",
-                "outline_points": "7,30 34,30 38,24 77,24 77,31 93,31 93,67 88,67 88,76 47,76 47,86 39,86 39,76 7,76",
-                "entrance_x": 8,
-                "entrance_y": 79,
-                "corridors": [
-                    {"x": 8, "y": 51, "w": 82, "h": 9},
-                    {"x": 45, "y": 58, "w": 12, "h": 24},
-                    {"x": 84, "y": 33, "w": 7, "h": 32},
-                    {"x": 58, "y": 65, "w": 30, "h": 9},
-                ],
-                "walls": [
-                    {"x1": 8, "y1": 51, "x2": 90, "y2": 51},
-                    {"x1": 8, "y1": 60, "x2": 90, "y2": 60},
-                    {"x1": 45, "y1": 58, "x2": 45, "y2": 82},
-                    {"x1": 57, "y1": 58, "x2": 57, "y2": 82},
-                    {"x1": 84, "y1": 33, "x2": 84, "y2": 65},
-                    {"x1": 91, "y1": 33, "x2": 91, "y2": 65},
-                ],
-                "labels": [
-                    {"text": "main corridor", "x": 23, "y": 47},
-                    {"text": "stairs", "x": 60, "y": 76},
-                ],
-                "rooms": [
-                    make_room("101", "Room 101", "Room", "12.6 m²", 49, 59, 8, 12, "near the central-right part of Level 1"),
-                    make_room("102", "Room 102", "Small Room", "3.4 m²", 50, 75, 6, 8, "near the lower central room cluster"),
-                    make_room("103", "Room 103", "Room", "13.8 m²", 90, 42, 7, 12, "on the far-right side of Level 1"),
-                    make_room("104", "Room 104", "Room", "26.5 m²", 73, 52, 10, 10, "beside Room 104A and Room 105"),
-                    make_room("104A", "Room 104A", "Large Room", "85.2 m²", 82, 43, 9, 11, "near the upper-right room area"),
-                    make_room("105", "Room 105", "Room", "24.7 m²", 64, 55, 10, 11, "between Room 104 and Room 106"),
-                    make_room("106", "Room 106", "Large Room", "57.5 m²", 50, 66, 15, 10, "near the lower middle section of the map"),
-                    make_room("195", "Room 195", "Large Room", "85.2 m²", 80, 29, 12, 11, "near the upper-right side of the floor plan"),
-                    make_room("196", "Room 196", "Room", "23.5 m²", 88, 56, 8, 13, "on the right side, close to Room 101 and Room 102"),
-                    make_room("197", "Room 197", "Room", "10.7 m²", 43, 59, 6, 9, "near the central corridor"),
-                    make_room("199", "Room 199", "Room", "20.4 m²", 42, 69, 7, 9, "near the lower central part of Level 1"),
-                ],
-            },
+                        "label": "Level 1",
+                        "outline_points": "4,57 8,57 8,39 10,39 10,13 12,13 12,39 19,39 19,13 21,13 21,39 29,39 29,13 31,13 31,39 43,39 43,9 74,9 74,39 95,39 95,13 97,13 97,58 93,58 93,80 77,80 77,69 63,69 63,86 47,86 47,69 43,69 43,80 31,80 31,67 8,67 8,73 4,73",
+                        "entrance_x": 8,
+                        "entrance_y": 79,
+                        "corridors": [
+                            {"x": 4, "y": 40, "w": 91, "h": 7},
+                            {"x": 45, "y": 47, "w": 5, "h": 28},
+                            {"x": 49, "y": 58, "w": 21, "h": 8},
+                            {"x": 71, "y": 47, "w": 22, "h": 8},
+                            {"x": 31, "y": 67, "w": 18, "h": 6},
+                            {"x": 50, "y": 63, "w": 12, "h": 15},
+                        ],
+                        "walls": [
+                            {"x1": 4, "y1": 40, "x2": 95, "y2": 40},
+                            {"x1": 4, "y1": 47, "x2": 95, "y2": 47},
+
+                            {"x1": 45, "y1": 47, "x2": 45, "y2": 75},
+                            {"x1": 50, "y1": 47, "x2": 50, "y2": 75},
+
+                            {"x1": 49, "y1": 58, "x2": 70, "y2": 58},
+                            {"x1": 49, "y1": 66, "x2": 70, "y2": 66},
+
+                            {"x1": 71, "y1": 47, "x2": 93, "y2": 47},
+                            {"x1": 71, "y1": 55, "x2": 93, "y2": 55},
+
+                            {"x1": 31, "y1": 67, "x2": 49, "y2": 67},
+                            {"x1": 31, "y1": 73, "x2": 49, "y2": 73},
+
+                            {"x1": 50, "y1": 63, "x2": 62, "y2": 63},
+                            {"x1": 50, "y1": 78, "x2": 62, "y2": 78},
+                        ],
+                        "labels": [
+                            {"text": "main corridor", "x": 22, "y": 36},
+                            {"text": "stairs", "x": 60, "y": 75},
+                        ],
+                        "rooms": [
+                            make_room(
+                                "195", "Room 195", "Large Room", "85.2 m²",
+                                46.0, 40.0, 6.0, 7.2,
+                                "8,79 31,79 31,69 47,69 47,43",
+                                "above Room 101 near the middle of Level 1"
+                            ),
+                            make_room(
+                                "101", "Room 101", "Room", "12.6 m²",
+                                46.0, 49.2, 5.2, 8.8,
+                                "8,79 31,79 31,69 47,69 47,54",
+                                "below Room 195 near the middle of Level 1"
+                            ),
+                            make_room(
+                                "196", "Room 196", "Room", "23.5 m²",
+                                45.0, 61.4, 4.6, 7.0,
+                                "8,79 31,79 31,69 46,69 46,64",
+                                "below Room 101 near the lower-middle part of Level 1"
+                            ),
+                            make_room(
+                                "102", "Room 102", "Small Room", "3.4 m²",
+                                47.0, 71.4, 3.6, 4.8,
+                                "8,79 31,79 31,72 48,72",
+                                "below and slightly right of Room 196"
+                            ),
+                            make_room(
+                                "199", "Room 199", "Room", "20.4 m²",
+                                55.6, 60.2, 4.6, 5.4,
+                                "8,79 31,79 31,69 56,69 56,62",
+                                "above the stair area near the lower-middle section"
+                            ),
+                            make_room(
+                                "106", "Room 106", "Large Room", "57.5 m²",
+                                52.0, 50.0, 18.5, 10.0,
+                                "8,79 31,79 31,69 48,69 48,54 55,54",
+                                "the long room in the middle-right section of Level 1"
+                            ),
+                            make_room(
+                                "105", "Room 105", "Room", "24.7 m²",
+                                74.0, 50.0, 8.4, 9.4,
+                                "8,79 31,79 31,69 48,69 48,54 76,54",
+                                "to the right of Room 106"
+                            ),
+                            make_room(
+                                "104", "Room 104", "Room", "26.5 m²",
+                                84.0, 50.0, 8.2, 9.4,
+                                "8,79 31,79 31,69 48,69 48,54 86,54",
+                                "to the right of Room 105"
+                            ),
+                            make_room(
+                                "104A", "Room 104A", "Large Room", "24.2 m²",
+                                82.0, 41.0, 6.8, 6.8,
+                                "8,79 31,79 31,69 48,69 48,44 84,44",
+                                "above Room 104 near the upper-right corridor"
+                            ),
+                            make_room(
+                                "197", "Room 197", "Room", "10.7 m²",
+                                91.2, 48.4, 3.0, 11.2,
+                                "8,79 31,79 31,69 48,69 48,44 92,53",
+                                "near the far-right side beside the stair / right cluster"
+                            ),
+                            make_room(
+                                "103", "Room 103", "Room", "13.8 m²",
+                                95.0, 40.8, 4.0, 12.4,
+                                "8,79 31,79 31,69 48,69 48,44 96,46",
+                                "on the far-right side of the floor plan"
+                            ),
+                        ],
+                    },
 
             make_floor(2, [
                 make_room("203", "Room 203", "Room", "21.7 m²", 80, 62, 9, 9, "near the lower-right side of Level 2"),
