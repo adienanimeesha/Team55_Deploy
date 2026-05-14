@@ -21,10 +21,17 @@ class Command(BaseCommand):
                 raise CommandError(f'File not found: {path}')
 
             with file:
-                rows = list(csv.DictReader(file))
+                reader = csv.DictReader(file)
+                rows = list(reader)
+                columns = reader.fieldnames or []
 
-            node_rows = [r for r in rows if not r.get('from_id') and not r.get('to_id')]
-            edge_rows = [r for r in rows if r.get('from_id') and r.get('to_id')]
+            is_edges_only = 'from_id' in columns and 'id' not in columns
+            if is_edges_only:
+                node_rows = []
+                edge_rows = rows
+            else:
+                node_rows = [r for r in rows if not r.get('from_id') and not r.get('to_id')]
+                edge_rows = [r for r in rows if r.get('from_id') and r.get('to_id')]
 
             nodes_created = sum(self._import_node(r) for r in node_rows)
             edges_created = sum(self._import_edge(r) for r in edge_rows)
