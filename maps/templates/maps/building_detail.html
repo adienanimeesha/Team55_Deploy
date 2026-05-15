@@ -85,6 +85,17 @@
             grid-template-columns: minmax(0, 2.35fr) minmax(280px, 0.9fr);
         }
 
+        .layout.building-63.floor-1,
+        .layout.building-63.floor-2,
+        .layout.building-63.floor-2A {
+            grid-template-columns: minmax(0, 2.45fr) minmax(280px, 0.85fr);
+        }
+
+        .layout.building-63.floor-2,
+        .layout.building-63.floor-2A {
+            grid-template-columns: minmax(0, 2.75fr) minmax(260px, 0.7fr);
+        }
+
         .map-card,
         .directions-card {
             background: white;
@@ -180,6 +191,25 @@
             stroke: #87919a;
             stroke-width: 0.55;
             stroke-linecap: round;
+        }
+
+        .floor-detail {
+            fill: #bfc3c4;
+            stroke: #1f1f1f;
+            stroke-width: 0.16;
+        }
+
+        .floor-detail-line {
+            stroke: #1f1f1f;
+            stroke-width: 0.18;
+            stroke-linecap: square;
+        }
+
+        .floor-seat,
+        .floor-furniture {
+            fill: none;
+            stroke: #a8a8a8;
+            stroke-width: 0.16;
         }
 
         .real-layout .floor-shell {
@@ -313,6 +343,67 @@
             overflow: hidden;
         }
 
+        .layout.building-63.floor-2 .map.real-layout,
+        .layout.building-63.floor-2A .map.real-layout {
+            border-color: #b9b9b9;
+        }
+
+        .layout.building-63.floor-2 .wall-line,
+        .layout.building-63.floor-2A .wall-line {
+            stroke: #1f1f1f;
+            stroke-width: 0.25;
+            stroke-linecap: square;
+        }
+
+        .layout.building-63.floor-2 .corridor-shape,
+        .layout.building-63.floor-2A .corridor-shape {
+            stroke-width: 0.2;
+        }
+
+        .layout.building-63.floor-2 .room-node,
+        .layout.building-63.floor-2A .room-node {
+            border-color: transparent;
+            background: transparent;
+            overflow: visible;
+            font-size: 5.2px;
+            line-height: 1.05;
+            padding: 0;
+        }
+
+        .layout.building-63.floor-2 .room-node:hover,
+        .layout.building-63.floor-2 .room-node.active,
+        .layout.building-63.floor-2A .room-node:hover,
+        .layout.building-63.floor-2A .room-node.active {
+            border: 0.45px solid #51247A;
+            background: rgba(239, 230, 247, 0.72);
+        }
+
+        .layout.building-63.floor-2 .room-code,
+        .layout.building-63.floor-2A .room-code {
+            font-size: 5.6px;
+            line-height: 1;
+        }
+
+        .layout.building-63.floor-2 .room-name,
+        .layout.building-63.floor-2A .room-name {
+            font-size: 3.6px;
+            white-space: normal;
+            max-height: 2.4em;
+        }
+
+        .layout.building-63.floor-2A .room-node {
+            font-size: 6.4px;
+        }
+
+        .layout.building-63.floor-2A .room-code {
+            font-size: 7px;
+        }
+
+        .layout.building-63.floor-2A .room-name {
+            font-size: 4.7px;
+            max-height: 2.6em;
+        }
+
         .directions-title {
             font-size: 23px;
             font-weight: 800;
@@ -441,7 +532,11 @@
                 </div>
             </div>
 
-            <div class="map {% if current_floor.real_layout %}real-layout{% endif %}" style="{% if current_floor.aspect_ratio %}--map-aspect: {{ current_floor.aspect_ratio }};{% endif %}{% if current_floor.map_zoom %} --map-zoom: {{ current_floor.map_zoom }};{% endif %}">
+            {% if current_floor.real_layout %}
+                <div class="map real-layout" style="--map-aspect: {{ current_floor.aspect_ratio|default:'2.42 / 1' }}; --map-zoom: {{ current_floor.map_zoom|default:'1' }};">
+            {% else %}
+                <div class="map">
+            {% endif %}
                 <div class="map-inner">
                     <svg class="floor-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                         <polygon class="floor-shell" points="{{ current_floor.outline_points }}"></polygon>
@@ -465,6 +560,48 @@
                                 x2="{{ wall.x2 }}"
                                 y2="{{ wall.y2 }}"
                             ></line>
+                        {% endfor %}
+
+                        {% for detail in current_floor.details %}
+                            {% if detail.kind == "rect" %}
+                                <rect
+                                    class="floor-detail"
+                                    x="{{ detail.x }}"
+                                    y="{{ detail.y }}"
+                                    width="{{ detail.w }}"
+                                    height="{{ detail.h }}"
+                                ></rect>
+                            {% elif detail.kind == "outline_rect" %}
+                                <rect
+                                    class="floor-furniture"
+                                    x="{{ detail.x }}"
+                                    y="{{ detail.y }}"
+                                    width="{{ detail.w }}"
+                                    height="{{ detail.h }}"
+                                ></rect>
+                            {% elif detail.kind == "seat" %}
+                                <circle
+                                    class="floor-seat"
+                                    cx="{{ detail.cx }}"
+                                    cy="{{ detail.cy }}"
+                                    r="{{ detail.r }}"
+                                ></circle>
+                            {% elif detail.kind == "cross" %}
+                                <line
+                                    class="floor-detail-line"
+                                    x1="{{ detail.x1 }}"
+                                    y1="{{ detail.y1 }}"
+                                    x2="{{ detail.x2 }}"
+                                    y2="{{ detail.y2 }}"
+                                ></line>
+                                <line
+                                    class="floor-detail-line"
+                                    x1="{{ detail.x3 }}"
+                                    y1="{{ detail.y3 }}"
+                                    x2="{{ detail.x4 }}"
+                                    y2="{{ detail.y4 }}"
+                                ></line>
+                            {% endif %}
                         {% endfor %}
                     </svg>
 
