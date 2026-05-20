@@ -6,6 +6,9 @@ from .data import BUILDINGS
 from indoor_nav.models import Node
 from indoor_nav.pathfinding import dijkstra
 from indoor_nav.path_simplification import simplify_path, format_directions
+from indoor_nav.path_visualization import (
+    group_segments_by_floor, get_floor_order, segments_to_svg, create_floor_transition_info
+)
 
 
 def find_building(building_id):
@@ -129,10 +132,60 @@ def _building_results(query):
     return results
 
 
+def _get_path_fp_coords(path, buildings):
+    """
+    Map each path node to its floor-plan (0–100 viewport) centre coordinate,
+    grouped by building+floor so the template JS can draw per-SVG overlays.
+
+    Returns e.g. {"b62_f1": [{"x": 48.0, "y": 52.5, "step": 1, "label": "101 – Switch Room"}, ...], ...}
+    """
+    if not path:
+        return {}
+
+    # Build a fast lookup:  (building_num, floor_level, room_code) → (cx, cy)
+    room_lookup = {}
+    for building in buildings:
+        b_num = building['number']
+        for floor in building['floors']:
+            f_level = floor['level']
+            for room in floor['rooms']:
+                code = room['code'].strip().lower()
+                cx = room.get('x', 0) + room.get('w', 0) / 2.0
+                cy = room.get('y', 0) + room.get('h', 0) / 2.0
+                room_lookup[(b_num, f_level, code)] = (cx, cy)
+
+    result = {}
+    for i, node in enumerate(path):
+        m = re.search(r'\b(\d+)\b', node.building or '')
+        if not m:
+            continue
+        b_num = m.group(1)
+
+        label = node.label or ''
+        room_code = label.split(' - ')[0].strip().lower()
+        if not room_code:
+            continue
+
+        key = (b_num, node.floor, room_code)
+        if key not in room_lookup:
+            continue
+
+        cx, cy = room_lookup[key]
+        group_key = f"b{b_num}_f{node.floor}"
+        result.setdefault(group_key, []).append({
+            'x': round(cx, 2),
+            'y': round(cy, 2),
+            'step': i + 1,
+            'label': label,
+        })
+
+    return result
+
+
 def _run_route(from_q, from_id, to_q, to_id):
     from_node, from_candidates = _resolve_node(from_q, from_id)
     to_node, to_candidates = _resolve_node(to_q, to_id)
-    path = path_coords = route_error = simplified_segments = None
+    path = path_coords = route_error = simplified_segments = floor_visualization = None
 
     if from_node and to_node:
         path, _ = dijkstra(from_node.id, to_node.id)
@@ -141,6 +194,35 @@ def _run_route(from_q, from_id, to_q, to_id):
         else:
             # Generate simplified path segments
             simplified_segments = simplify_path(path, angle_threshold=15.0)
+            
+            # Generate floor-based visualization
+            if simplified_segments:
+                floor_segments = group_segments_by_floor(simplified_segments)
+                floor_order = get_floor_order(simplified_segments)
+                
+                floor_visualization = []
+                for i, floor_num in enumerate(floor_order):
+                    floor_label = f"Floor {floor_num}"
+                    segments = floor_segments.get(floor_label, [])
+                    
+                    # Generate SVG overlay for this floor
+                    svg_overlay = segments_to_svg(segments)
+                    
+                    # Get floor transitions (stairs/elevators to next floor)
+                    next_floor_transition = None
+                    if i < len(floor_order) - 1:
+                        next_floor = f"Floor {floor_order[i + 1]}"
+                        next_floor_transition = create_floor_transition_info(
+                            floor_label, next_floor, simplified_segments
+                        )
+                    
+                    floor_visualization.append({
+                        'floor': floor_label,
+                        'floor_num': floor_num,
+                        'segments': segments,
+                        'svg_overlay': svg_overlay,
+                        'next_transition': next_floor_transition
+                    })
             
             coords = [
                 {'lat': n.lat, 'lng': n.lng, 'label': n.label}
@@ -153,7 +235,7 @@ def _run_route(from_q, from_id, to_q, to_id):
             _missing_error(from_q, from_node, from_candidates)
             or _missing_error(to_q, to_node, to_candidates)
         )
-    return from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments
+    return from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments, floor_visualization
 
 
 FLOOR_OPTIONS = [
@@ -191,11 +273,11 @@ def home(request):
     from_id = request.GET.get('from_id', '').strip()
     to_id = request.GET.get('to_id', '').strip()
 
-    from_node = to_node = path = path_coords = route_error = simplified_segments = None
+    from_node = to_node = path = path_coords = route_error = simplified_segments = floor_visualization = None
     from_candidates = to_candidates = []
 
     if from_q or from_id or to_q or to_id:
-        from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments = (
+        from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments, floor_visualization = (
             _run_route(from_q, from_id, to_q, to_id)
         )
 
@@ -214,6 +296,13 @@ def home(request):
                     map_floors.append({"building": building, "floor": floor})
                     break
 
+    # Create a lookup dict for floor visualization
+    floor_viz_map = {}
+    if floor_visualization:
+        for viz_data in floor_visualization:
+            floor_key = viz_data['floor_num']
+            floor_viz_map[floor_key] = viz_data
+
     return render(request, "maps/home.html", {
         "query": request.GET.get("q", ""),
         "results": results,
@@ -228,12 +317,15 @@ def home(request):
         "path": path,
         "path_coords": path_coords,
         "simplified_segments": simplified_segments,
+        "floor_visualization": floor_visualization,
+        "floor_viz_map": floor_viz_map if floor_visualization else {},
         "route_error": route_error,
         "selected_floor": selected_floor,
         "selected_campus": selected_campus,
         "floor_options": FLOOR_OPTIONS,
         "campus_options": CAMPUS_OPTIONS,
         "map_floors": map_floors,
+        "path_fp_coords_json": json.dumps(_get_path_fp_coords(path, BUILDINGS)),
     })
 
 

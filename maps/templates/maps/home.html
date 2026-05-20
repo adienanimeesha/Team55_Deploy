@@ -382,6 +382,136 @@
             font-weight: 800;
         }
 
+        /* Floor Visualization Styles */
+        .floor-accordion {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            border: 1px solid #eee9e3;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .floor-section {
+            border-bottom: 1px solid #eee9e3;
+        }
+
+        .floor-section:last-child {
+            border-bottom: none;
+        }
+
+        .floor-header {
+            width: 100%;
+            background: var(--uq-purple-soft);
+            border: none;
+            padding: 12px 14px;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: var(--ink);
+            transition: background 0.2s ease;
+        }
+
+        .floor-header:hover {
+            background: #e8d9f5;
+        }
+
+        .chevron {
+            transition: transform 0.2s ease;
+            display: inline-block;
+        }
+
+        .floor-header.open .chevron {
+            transform: rotate(180deg);
+        }
+
+        .floor-content {
+            padding: 14px;
+            background: white;
+        }
+
+        .floor-map-container {
+            position: relative;
+            background: #f7f3eb;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            min-height: 200px;
+        }
+
+        .path-overlay {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .step-label {
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+        }
+
+        .turn-indicator {
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+        }
+
+        .floor-segments {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-top: 10px;
+            border-top: 1px solid #eee9e3;
+        }
+
+        .floor-segment-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            font-size: 13px;
+        }
+
+        .direction-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .segment-text {
+            color: var(--ink);
+            line-height: 1.3;
+        }
+
+        .floor-transition {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 2px solid var(--uq-purple-soft);
+        }
+
+        .transition-connector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--uq-purple-soft);
+            border-radius: 6px;
+        }
+
+        .transition-icon {
+            font-size: 20px;
+        }
+
+        .transition-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--uq-purple);
+        }
+
         .building-card {
             display: block;
             border: 1px solid #ece6df;
@@ -1240,6 +1370,7 @@
                 align-items: flex-start;
             }
         }
+
     </style>
 </head>
 <body>
@@ -1351,42 +1482,40 @@
             </section>
 
             {% if path %}
-                {% with path|last as last_node %}
-                    <section class="panel">
-                        {% if simplified_segments %}
-                            <div class="route-summary">{{ simplified_segments|length }} instruction{{ simplified_segments|length|pluralize }} from {{ path.0.label }} to {{ last_node.label }}</div>
-                            <div class="simplified-directions">
-                                {% for segment in simplified_segments %}
-                                    <div class="direction-step">
-                                        <div class="step-num">{{ forloop.counter }}</div>
-                                        <div class="step-content">
-                                            <div class="step-description">{{ segment.description }}</div>
-                                            {% if segment.intermediate_nodes %}
-                                                <div class="step-meta">
-                                                    <span class="tag">{{ segment.turn_direction }}</span>
-                                                    {% if segment.intermediate_nodes|length > 0 %}
-                                                        <span class="secondary">Passes through {{ segment.intermediate_nodes|length }} location{{ segment.intermediate_nodes|length|pluralize }}</span>
-                                                    {% endif %}
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            <div class="route-summary">{{ path|length|add:"-1" }} step{{ path|length|add:"-1"|pluralize }} from {{ path.0.label }} to {{ last_node.label }}</div>
-                            {% for node in path %}
-                                <div class="step">
-                                    <div class="step-num">{{ forloop.counter }}</div>
-                                    <div>
-                                        <div>{{ node.label }}<span class="tag">{{ node.type }}</span></div>
-                                        <div class="step-meta">{{ node.building }} · Floor {{ node.floor }}</div>
-                                    </div>
+            {% with path|last as last_node %}
+            <section class="panel">
+                {% if simplified_segments %}
+                    <div class="route-summary">{{ simplified_segments|length }} step{{ simplified_segments|length|pluralize }} · {{ path.0.label }} → {{ last_node.label }}</div>
+                    <div class="simplified-directions">
+                        {% for segment in simplified_segments %}
+                        <div class="direction-step">
+                            <div class="step-num">{{ forloop.counter }}</div>
+                            <div class="step-content">
+                                <div class="step-description">{{ segment.description }}</div>
+                                {% if segment.turn_direction or segment.intermediate_nodes %}
+                                <div class="step-meta">
+                                    {% if segment.turn_direction %}<span class="tag">{{ segment.turn_direction }}</span>{% endif %}
+                                    {% if segment.intermediate_nodes|length > 0 %}<span class="secondary">via {{ segment.intermediate_nodes|length }} location{{ segment.intermediate_nodes|length|pluralize }}</span>{% endif %}
                                 </div>
-                            {% endfor %}
-                        {% endif %}
-                    </section>
-                {% endwith %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="route-summary">{{ path|length|add:"-1" }} step{{ path|length|add:"-1"|pluralize }} · {{ path.0.label }} → {{ last_node.label }}</div>
+                    {% for node in path %}
+                    <div class="step">
+                        <div class="step-num">{{ forloop.counter }}</div>
+                        <div>
+                            <div>{{ node.label }}<span class="tag">{{ node.type }}</span></div>
+                            <div class="step-meta">{{ node.building }} · Floor {{ node.floor }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </section>
+            {% endwith %}
             {% endif %}
 
             <section class="panel">
@@ -1510,7 +1639,8 @@
                               opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
                         {% for item in map_floors %}{% if item.building.number == "62" %}
                         {# floor plan embedded in a nested SVG with matching viewBox #}
-                        <svg x="0" y="0" width="560" height="260"
+                        <svg id="fp-svg-b{{ item.building.number }}_f{{ item.floor.level }}"
+                             x="0" y="0" width="560" height="260"
                              viewBox="0 0 100 100" preserveAspectRatio="none">
                             <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
                             {% for c in item.floor.corridors %}
@@ -1540,7 +1670,8 @@
                               fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
                               opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
                         {% for item in map_floors %}{% if item.building.number == "63" %}
-                        <svg x="0" y="0" width="420" height="270"
+                        <svg id="fp-svg-b{{ item.building.number }}_f{{ item.floor.level }}"
+                             x="0" y="0" width="420" height="270"
                              viewBox="0 0 100 100" preserveAspectRatio="none">
                             <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
                             {% for c in item.floor.corridors %}
@@ -1570,7 +1701,8 @@
                               fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
                               opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
                         {% for item in map_floors %}{% if item.building.number == "69" %}
-                        <svg x="0" y="0" width="370" height="380"
+                        <svg id="fp-svg-b{{ item.building.number }}_f{{ item.floor.level }}"
+                             x="0" y="0" width="370" height="380"
                              viewBox="0 0 100 100" preserveAspectRatio="none">
                             <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
                             {% for c in item.floor.corridors %}
@@ -1761,6 +1893,84 @@
             setCollapsed(!isCollapsed());
         });
     }());
+
+    // Floor accordion toggle
+    window.toggleFloor = function(button) {
+        var content = button.nextElementSibling;
+        var isOpen = content.style.display !== 'none';
+        
+        // Close all other floors
+        document.querySelectorAll('.floor-content').forEach(function(el) {
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('.floor-header').forEach(function(el) {
+            el.classList.remove('open');
+        });
+        
+        // Toggle current floor
+        if (isOpen) {
+            content.style.display = 'none';
+            button.classList.remove('open');
+        } else {
+            content.style.display = 'block';
+            button.classList.add('open');
+        }
+    };
+
+    // Auto-open first floor
+    var firstFloor = document.querySelector('.floor-header');
+    if (firstFloor) {
+        firstFloor.click();
+    }
+}());
+
+// ── Dotted route path overlay on building floor plans ──────────────────────
+(function () {
+    var fpCoords = {{ path_fp_coords_json|safe }};
+    if (!fpCoords || !Object.keys(fpCoords).length) return;
+
+    var NS = 'http://www.w3.org/2000/svg';
+
+    function makeSvgEl(tag, attrs) {
+        var el = document.createElementNS(NS, tag);
+        Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+        return el;
+    }
+
+    Object.keys(fpCoords).forEach(function (groupKey) {
+        var pts = fpCoords[groupKey];
+        if (!pts || pts.length === 0) return;
+
+        var svgEl = document.getElementById('fp-svg-' + groupKey);
+        if (!svgEl) return;   // floor not currently visible — skip
+
+        // 1. Dashed path line
+        if (pts.length >= 2) {
+            var pointsStr = pts.map(function (p) { return p.x + ',' + p.y; }).join(' ');
+            svgEl.appendChild(makeSvgEl('polyline', {
+                points: pointsStr,
+                fill: 'none',
+                stroke: '#6B21A8',
+                'stroke-width': '3.5',
+                'stroke-dasharray': '7 4',
+                'stroke-linecap': 'round',
+                'stroke-linejoin': 'round',
+                opacity: '0.88',
+            }));
+        }
+
+        // 2. Waypoint circles (white fill, purple stroke)
+        pts.forEach(function (p, idx) {
+            var isStart = idx === 0;
+            var isEnd   = idx === pts.length - 1;
+            svgEl.appendChild(makeSvgEl('circle', {
+                cx: p.x, cy: p.y, r: isStart || isEnd ? '4' : '3',
+                fill:          isStart ? '#22c55e' : isEnd ? '#ef4444' : 'white',
+                stroke:        '#6B21A8',
+                'stroke-width': '1.5',
+            }));
+        });
+    });
 }());
 </script>
 </body>
