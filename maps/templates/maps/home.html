@@ -950,6 +950,89 @@
             flex-shrink: 0;
         }
 
+        /* ═══════════════════════════════════════════
+           SVG-EMBEDDED FLOOR PLAN STYLES
+           Rooms rendered directly inside the campus SVG
+           so they sit exactly on the building footprints.
+        ═══════════════════════════════════════════ */
+        .svg-fp-shell    { fill: #ffffff; stroke: #1a1a1a; stroke-width: 0.4; }
+        .svg-fp-corridor { fill: rgba(212,205,196,0.55); stroke: none; }
+        .svg-fp-wall     { stroke: #1a1a1a; stroke-width: 0.25; stroke-linecap: round; }
+
+        /* base room — default colour when type doesn't match any class */
+        .svg-room { fill: rgba(246,243,238,0.92); stroke: rgba(120,112,96,0.7); stroke-width: 0.3; }
+
+        /* room type colours — same palette as the HTML floor plans */
+        .svg-room.svgr-teaching { fill: rgba(186,230,184,0.97); stroke: rgba(56,142,60,0.7);   }
+        .svg-room.svgr-lab      { fill: rgba(179,216,252,0.97); stroke: rgba(30,120,200,0.65); }
+        .svg-room.svgr-office   { fill: rgba(255,244,140,0.97); stroke: rgba(180,140,10,0.6);  }
+        .svg-room.svgr-meeting  { fill: rgba(200,210,255,0.97); stroke: rgba(80,100,200,0.6);  }
+        .svg-room.svgr-study    { fill: rgba(220,200,242,0.97); stroke: rgba(110,70,160,0.55); }
+        .svg-room.svgr-stairs   { fill: rgba(120,188,118,0.97); stroke: rgba(34,110,34,0.72);  }
+        .svg-room.svgr-lift     { fill: rgba(100,195,175,0.97); stroke: rgba(20,130,110,0.7);  }
+        .svg-room.svgr-toilet   { fill: rgba(200,215,222,0.97); stroke: rgba(80,108,120,0.6);  }
+        .svg-room.svgr-kitchen  { fill: rgba(255,210,155,0.97); stroke: rgba(200,120,20,0.6);  }
+        .svg-room.svgr-corridor { fill: rgba(210,202,193,0.85); stroke: rgba(130,120,110,0.5); }
+        .svg-room.svgr-storage  { fill: rgba(220,210,190,0.97); stroke: rgba(140,120,80,0.55); }
+
+        /* ── compact floor-plan legend (HTML overlay, bottom-right) ── */
+        .map-fp-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 5;
+            background: rgba(255,255,255,0.94);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 14px;
+            padding: 11px 13px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            min-width: 168px;
+        }
+        .map-fp-legend-title {
+            font-size: 11.5px;
+            font-weight: 800;
+            color: var(--uq-purple);
+            margin-bottom: 7px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #ece6df;
+        }
+        .map-fp-legend-body {
+            display: flex;
+            flex-direction: column;
+            gap: 3.5px;
+            margin-bottom: 7px;
+        }
+        .map-fp-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10.5px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .map-fp-legend-swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            border: 1px solid rgba(0,0,0,0.15);
+            flex-shrink: 0;
+        }
+        .map-fp-legend-links {
+            border-top: 1px solid #ece6df;
+            padding-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .map-fp-legend-links a {
+            font-size: 11px;
+            color: var(--uq-purple);
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .map-fp-legend-links a:hover { text-decoration: underline; }
+
         .floor-plan-none {
             flex: 1;
             display: flex;
@@ -1304,11 +1387,11 @@
             </div>
 
             {# ══════════════════════════════════════════════════════
-                 BASE LAYER — campus SVG map, always visible
-                 (same layout as Herston / Gatton overview)
+                 CAMPUS MAP — floor plans embedded directly inside
+                 the SVG building groups so they align automatically
+                 with each building's position and rotation.
             ══════════════════════════════════════════════════════ #}
             <div class="map-canvas">
-                {# full-size SVG campus map — acts as the permanent background #}
                 <svg class="campus-svg" viewBox="0 0 1366 880" preserveAspectRatio="xMidYMid slice"
                      xmlns="http://www.w3.org/2000/svg">
 
@@ -1348,28 +1431,98 @@
                           fill="white" stroke="#d8d4cc" stroke-width="1" opacity="0.9"
                           transform="rotate(-10,955,316)"/>
 
-                    {# ── building footprint: 62 (John Hines) ── #}
-                    <g transform="translate(100,158) rotate(16,280,130)" opacity="0.45">
+                    {# ═══ BUILDING 62 — John Hines ═══
+                         Rect 560×260, rotated 16° around its centre.
+                         A nested svg maps 0–100 coords → 560×260 px,
+                         so room x/y/w/h percentages align automatically.
+                    ═══════════════════════════════════════════════ #}
+                    <g transform="translate(100,158) rotate(16,280,130)">
+                        {# always-visible shadow rect #}
                         <rect x="0" y="0" width="560" height="260" rx="4"
-                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.5"/>
-                        <text x="280" y="138" text-anchor="middle" font-size="15" font-weight="800"
-                              fill="#2c2926" font-family="Arial,sans-serif">John Hines (62)</text>
+                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
+                              opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
+                        {% for item in map_floors %}{% if item.building.number == "62" %}
+                        {# floor plan embedded in a nested SVG with matching viewBox #}
+                        <svg x="0" y="0" width="560" height="260"
+                             viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
+                            {% for c in item.floor.corridors %}
+                            <rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" class="svg-fp-corridor"/>
+                            {% endfor %}
+                            {% for room in item.floor.rooms %}{% with t=room.type|lower %}
+                            <rect x="{{ room.x }}" y="{{ room.y }}" width="{{ room.w }}" height="{{ room.h }}"
+                                  class="svg-room{% if 'teaching' in t or 'lecture' in t or 'theatre' in t %} svgr-teaching{% elif 'lab' in t or 'computer' in t %} svgr-lab{% elif 'office' in t %} svgr-office{% elif 'meeting' in t %} svgr-meeting{% elif 'study' in t %} svgr-study{% elif 'stair' in t %} svgr-stairs{% elif 'lift' in t or 'elevator' in t %} svgr-lift{% elif 'toilet' in t or 'wc' in t or 'accessible' in t or 'bathroom' in t %} svgr-toilet{% elif 'kitchen' in t or 'food' in t or 'beverage' in t %} svgr-kitchen{% elif 'corridor' in t %} svgr-corridor{% elif 'storage' in t or 'bicycle' in t %} svgr-storage{% endif %}"/>
+                            {% endwith %}{% endfor %}
+                            {% for wall in item.floor.walls %}
+                            <line x1="{{ wall.x1 }}" y1="{{ wall.y1 }}" x2="{{ wall.x2 }}" y2="{{ wall.y2 }}" class="svg-fp-wall"/>
+                            {% endfor %}
+                        </svg>
+                        {% endif %}{% endfor %}
+                        <text x="280" y="-8" text-anchor="middle" font-size="13" font-weight="800"
+                              fill="#2c2926" font-family="Arial,sans-serif"
+                              style="paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round">
+                            John Hines (62)
+                        </text>
                     </g>
 
-                    {# ── building footprint: 63 ── #}
-                    <g transform="translate(72,476) rotate(14,210,135)" opacity="0.45">
+                    {# ═══ BUILDING 63 — Physiology Lecture Theatres ═══
+                         Rect 420×270, rotated 14° around its centre.
+                    ═══════════════════════════════════════════════ #}
+                    <g transform="translate(72,476) rotate(14,210,135)">
                         <rect x="0" y="0" width="420" height="270" rx="4"
-                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.5"/>
-                        <text x="210" y="143" text-anchor="middle" font-size="13" font-weight="800"
-                              fill="#2c2926" font-family="Arial,sans-serif">Physiology LT (63)</text>
+                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
+                              opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
+                        {% for item in map_floors %}{% if item.building.number == "63" %}
+                        <svg x="0" y="0" width="420" height="270"
+                             viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
+                            {% for c in item.floor.corridors %}
+                            <rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" class="svg-fp-corridor"/>
+                            {% endfor %}
+                            {% for room in item.floor.rooms %}{% with t=room.type|lower %}
+                            <rect x="{{ room.x }}" y="{{ room.y }}" width="{{ room.w }}" height="{{ room.h }}"
+                                  class="svg-room{% if 'teaching' in t or 'lecture' in t or 'theatre' in t %} svgr-teaching{% elif 'lab' in t or 'computer' in t %} svgr-lab{% elif 'office' in t %} svgr-office{% elif 'meeting' in t %} svgr-meeting{% elif 'study' in t %} svgr-study{% elif 'stair' in t %} svgr-stairs{% elif 'lift' in t or 'elevator' in t %} svgr-lift{% elif 'toilet' in t or 'wc' in t or 'accessible' in t or 'bathroom' in t %} svgr-toilet{% elif 'kitchen' in t or 'food' in t or 'beverage' in t %} svgr-kitchen{% elif 'corridor' in t %} svgr-corridor{% elif 'storage' in t or 'bicycle' in t %} svgr-storage{% endif %}"/>
+                            {% endwith %}{% endfor %}
+                            {% for wall in item.floor.walls %}
+                            <line x1="{{ wall.x1 }}" y1="{{ wall.y1 }}" x2="{{ wall.x2 }}" y2="{{ wall.y2 }}" class="svg-fp-wall"/>
+                            {% endfor %}
+                        </svg>
+                        {% endif %}{% endfor %}
+                        <text x="210" y="-8" text-anchor="middle" font-size="12" font-weight="800"
+                              fill="#2c2926" font-family="Arial,sans-serif"
+                              style="paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round">
+                            Physiology LT (63)
+                        </text>
                     </g>
 
-                    {# ── building footprint: 69 ── #}
-                    <g transform="translate(730,260) rotate(14,185,190)" opacity="0.45">
+                    {# ═══ BUILDING 69 ═══
+                         Rect 370×380, rotated 14° around its centre.
+                    ═══════════════════════════════════════════════ #}
+                    <g transform="translate(730,260) rotate(14,185,190)">
                         <rect x="0" y="0" width="370" height="380" rx="4"
-                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.5"/>
-                        <text x="185" y="198" text-anchor="middle" font-size="14" font-weight="800"
-                              fill="#2c2926" font-family="Arial,sans-serif">Building 69</text>
+                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
+                              opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
+                        {% for item in map_floors %}{% if item.building.number == "69" %}
+                        <svg x="0" y="0" width="370" height="380"
+                             viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
+                            {% for c in item.floor.corridors %}
+                            <rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" class="svg-fp-corridor"/>
+                            {% endfor %}
+                            {% for room in item.floor.rooms %}{% with t=room.type|lower %}
+                            <rect x="{{ room.x }}" y="{{ room.y }}" width="{{ room.w }}" height="{{ room.h }}"
+                                  class="svg-room{% if 'teaching' in t or 'lecture' in t or 'theatre' in t %} svgr-teaching{% elif 'lab' in t or 'computer' in t %} svgr-lab{% elif 'office' in t %} svgr-office{% elif 'meeting' in t %} svgr-meeting{% elif 'study' in t %} svgr-study{% elif 'stair' in t %} svgr-stairs{% elif 'lift' in t or 'elevator' in t %} svgr-lift{% elif 'toilet' in t or 'wc' in t or 'accessible' in t or 'bathroom' in t %} svgr-toilet{% elif 'kitchen' in t or 'food' in t or 'beverage' in t %} svgr-kitchen{% elif 'corridor' in t %} svgr-corridor{% elif 'storage' in t or 'bicycle' in t %} svgr-storage{% endif %}"/>
+                            {% endwith %}{% endfor %}
+                            {% for wall in item.floor.walls %}
+                            <line x1="{{ wall.x1 }}" y1="{{ wall.y1 }}" x2="{{ wall.x2 }}" y2="{{ wall.y2 }}" class="svg-fp-wall"/>
+                            {% endfor %}
+                        </svg>
+                        {% endif %}{% endfor %}
+                        <text x="185" y="-8" text-anchor="middle" font-size="13" font-weight="800"
+                              fill="#2c2926" font-family="Arial,sans-serif"
+                              style="paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round">
+                            Building 69
+                        </text>
                     </g>
 
                     {# ── POI labels ── #}
@@ -1387,142 +1540,49 @@
                 </svg>
             </div>
 
-            {# ══════════════════════════════════════════════════════
-                 OVERLAY LAYER — floor plan panels (when data exists)
-                 Sits on top of the campus SVG; panel background is
-                 semi-transparent so the map shows through the gaps.
-            ══════════════════════════════════════════════════════ #}
+            {# ── compact legend + building links (bottom-right HTML overlay) ── #}
             {% if map_floors %}
-            <div class="combined-floor-view">
-
-                {# header row: floor label + campus badge + building count #}
-                <div class="combined-floor-heading">
-                    <div class="combined-floor-title">
-                        {% for f in floor_options %}{% if f.value == selected_floor %}{{ f.label }}{% endif %}{% endfor %}
-                        &nbsp;&mdash;&nbsp;
-                        {% for c in campus_options %}{% if c.value == selected_campus %}{{ c.label }}{% endif %}{% endfor %}
-                        Campus
+            <div class="map-fp-legend">
+                <div class="map-fp-legend-title">
+                    {% for f in floor_options %}{% if f.value == selected_floor %}{{ f.label }}{% endif %}{% endfor %}
+                    &mdash; St Lucia
+                </div>
+                <div class="map-fp-legend-body">
+                    <div class="map-fp-legend-item">
+                        <div class="map-fp-legend-swatch" style="background:rgba(186,230,184,0.97);border-color:rgba(56,142,60,0.7)"></div>Teaching / Lecture
                     </div>
-                    <div class="combined-floor-meta">
-                        <span class="combined-count-badge">
-                            {{ map_floors|length }} building{{ map_floors|length|pluralize }}
-                        </span>
-                        <span class="combined-campus-badge">St Lucia</span>
+                    <div class="map-fp-legend-item">
+                        <div class="map-fp-legend-swatch" style="background:rgba(179,216,252,0.97);border-color:rgba(30,120,200,0.65)"></div>Computer Lab
+                    </div>
+                    <div class="map-fp-legend-item">
+                        <div class="map-fp-legend-swatch" style="background:rgba(255,244,140,0.97);border-color:rgba(180,140,10,0.6)"></div>Office
+                    </div>
+                    <div class="map-fp-legend-item">
+                        <div class="map-fp-legend-swatch" style="background:rgba(200,210,255,0.97);border-color:rgba(80,100,200,0.6)"></div>Meeting Room
+                    </div>
+                    <div class="map-fp-legend-item">
+                        <div class="map-fp-legend-swatch" style="background:rgba(120,188,118,0.97);border-color:rgba(34,110,34,0.72)"></div>Stairs / Lift
+                    </div>
+                    <div class="map-fp-legend-item">
+                        <div class="map-fp-legend-swatch" style="background:rgba(200,215,222,0.97);border-color:rgba(80,108,120,0.6)"></div>Toilet / WC
+                    </div>
+                    <div class="map-fp-legend-item">
+                        <div class="map-fp-legend-swatch" style="background:rgba(246,243,238,0.92);border-color:#787060"></div>Other
                     </div>
                 </div>
-
-                {# single panel holding all buildings side by side #}
-                <div class="combined-buildings-panel">
-                    <div class="combined-buildings-row">
-                        {% for item in map_floors %}
-                        <div class="building-fp-col">
-
-                            {# per-building header strip #}
-                            <div class="building-fp-header">
-                                <span class="building-fp-name">{{ item.building.name }}</span>
-                                <span class="building-fp-num">Bldg {{ item.building.number }}</span>
-                            </div>
-
-                            {# clickable floor plan that opens the building detail page #}
-                            <a class="building-fp-link"
-                               href="{% url 'building_detail' item.building.id %}?floor={{ item.floor.level }}">
-                                <div class="floor-plan-map{% if item.floor.real_layout %} real-layout{% endif %}"
-                                     {% if item.floor.real_layout %}style="--fp-aspect: {{ item.floor.aspect_ratio|default:'2.42 / 1' }};"{% endif %}>
-                                    <div class="fp-inner">
-                                        <svg class="fp-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                                            <polygon class="fp-shell" points="{{ item.floor.outline_points }}"></polygon>
-                                            {% for corridor in item.floor.corridors %}
-                                            <rect class="fp-corridor"
-                                                  x="{{ corridor.x }}" y="{{ corridor.y }}"
-                                                  width="{{ corridor.w }}" height="{{ corridor.h }}"
-                                                  rx="{% if item.floor.real_layout %}0{% else %}1{% endif %}"></rect>
-                                            {% endfor %}
-                                            {% for wall in item.floor.walls %}
-                                            <line class="fp-wall"
-                                                  x1="{{ wall.x1 }}" y1="{{ wall.y1 }}"
-                                                  x2="{{ wall.x2 }}" y2="{{ wall.y2 }}"></line>
-                                            {% endfor %}
-                                        </svg>
-                                        {% for room in item.floor.rooms %}
-                                        <div class="fp-room"
-                                             data-rtype="{{ room.type|lower }}"
-                                             style="--rx:{{ room.x }}%;--ry:{{ room.y }}%;--rw:{{ room.w }}%;--rh:{{ room.h }}%;">
-                                            <span class="fp-room-code">{{ room.code }}</span>
-                                            <span class="fp-room-name">{{ room.name }}</span>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                <div class="building-fp-hint">Open full map &rarr;</div>
-                            </a>
-
-                        </div>{# /building-fp-col #}
-                        {% empty %}
-                        <div class="combined-empty">
-                            No floor plans available for
-                            <strong>{% for c in campus_options %}{% if c.value == selected_campus %}{{ c.label }}{% endif %}{% endfor %}</strong>
-                            &mdash;
-                            {% for f in floor_options %}{% if f.value == selected_floor %}{{ f.label }}{% endif %}{% endfor %}.
-                        </div>
-                        {% endfor %}
-                    </div>{# /combined-buildings-row #}
-
-                    {# ── room type colour legend (matches actual UQ room types in the data) ── #}
-                    <div class="fp-legend">
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(186,230,184,0.97);border-color:rgba(56,142,60,0.7)"></div>
-                            Teaching / Lecture
-                        </div>
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(179,216,252,0.97);border-color:rgba(30,120,200,0.65)"></div>
-                            Computer Lab
-                        </div>
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(255,244,140,0.97);border-color:rgba(180,140,10,0.6)"></div>
-                            Office
-                        </div>
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(200,210,255,0.97);border-color:rgba(80,100,200,0.6)"></div>
-                            Meeting Room
-                        </div>
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(220,200,242,0.97);border-color:rgba(110,70,160,0.55)"></div>
-                            Study / Common
-                        </div>
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(120,188,118,0.97);border-color:rgba(34,110,34,0.72)"></div>
-                            Stairs
-                        </div>
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(100,195,175,0.97);border-color:rgba(20,130,110,0.7)"></div>
-                            Lift / Elevator
-                        </div>
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(200,215,222,0.97);border-color:rgba(80,108,120,0.6)"></div>
-                            Toilet / WC
-                        </div>
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(255,210,155,0.97);border-color:rgba(200,120,20,0.6)"></div>
-                            Food &amp; Beverage
-                        </div>
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(255,195,195,0.97);border-color:rgba(200,60,60,0.6)"></div>
-                            First Aid / Safety
-                        </div>
-                        <div class="fp-legend-item">
-                            <div class="fp-legend-swatch" style="background:rgba(246,243,238,0.92);border-color:#787060"></div>
-                            General Room
-                        </div>
-                    </div>
-                </div>{# /combined-buildings-panel #}
-
-            </div>{# /combined-floor-view #}
-
+                <div class="map-fp-legend-links">
+                    {% for item in map_floors %}
+                    <a href="{% url 'building_detail' item.building.id %}?floor={{ item.floor.level }}">
+                        {{ item.building.name }} &rarr;
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
             {% endif %}
 
             <div class="focus-note">
-                <strong>Combined floor view</strong><br>
-                All supported buildings at the selected floor, side by side. Click a building to open its full interactive map.
+                <strong>Floor plan overlay</strong><br>
+                Rooms are colour-coded by type inside each building. Use the dropdown to change floors. Click a building link to open its full interactive map.
             </div>
         </section>
     </main>
