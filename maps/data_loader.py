@@ -11,6 +11,7 @@ BUILDING_NAMES = {
     "62": "John Hines",
     "63": "Building 63",
     "67": "Building 67",
+    "69": "Building 69",
 }
 
 B62_POSITIONS = {

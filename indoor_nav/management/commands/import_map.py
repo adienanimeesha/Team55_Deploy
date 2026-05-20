@@ -16,7 +16,7 @@ class Command(BaseCommand):
         for path in options['csv_files']:
             self.stdout.write(f'Importing {path}...')
             try:
-                file = open(path, newline='', encoding='utf-8')
+                file = open(path, newline='', encoding='utf-8-sig')
             except FileNotFoundError:
                 raise CommandError(f'File not found: {path}')
 

@@ -152,9 +152,35 @@ def _run_route(from_q, from_id, to_q, to_id):
     return from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error
 
 
+FLOOR_OPTIONS = [
+    {"value": "0",  "label": "Ground"},
+    {"value": "1",  "label": "Floor 1"},
+    {"value": "2",  "label": "Floor 2"},
+    {"value": "2A", "label": "Floor 2A"},
+    {"value": "3",  "label": "Floor 3"},
+    {"value": "3A", "label": "Floor 3A"},
+    {"value": "4",  "label": "Floor 4"},
+    {"value": "5",  "label": "Floor 5"},
+    {"value": "6",  "label": "Floor 6"},
+    {"value": "7",  "label": "Floor 7"},
+    {"value": "8",  "label": "Floor 8"},
+    {"value": "9",  "label": "Floor 9"},
+]
+
+CAMPUS_OPTIONS = [
+    {"value": "st-lucia",    "label": "St Lucia"},
+    {"value": "gatton",      "label": "Gatton"},
+    {"value": "herston",     "label": "Herston"},
+    {"value": "dutton-park", "label": "Dutton Park"},
+]
+
+
 def home(request):
     q = request.GET.get("q", "").strip().lower()
     results = _building_results(q)
+
+    selected_floor = request.GET.get("floor", "1")
+    selected_campus = request.GET.get("campus", "st-lucia")
 
     from_q = request.GET.get('from', '').strip()
     to_q = request.GET.get('to', '').strip()
@@ -168,6 +194,21 @@ def home(request):
         from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error = (
             _run_route(from_q, from_id, to_q, to_id)
         )
+
+    # Gather per-building floor plan data for the selected floor level.
+    # Match buildings whose campus slug matches the selected campus value
+    # (case-insensitive, hyphen/space flexible) so all three St Lucia buildings
+    # appear together in the combined panel.
+    def _campus_slug(raw):
+        return raw.lower().replace(" ", "-")
+
+    map_floors = []
+    for building in BUILDINGS:
+        if _campus_slug(building.get("campus", "")) == selected_campus:
+            for floor in building["floors"]:
+                if floor["level"] == selected_floor:
+                    map_floors.append({"building": building, "floor": floor})
+                    break
 
     return render(request, "maps/home.html", {
         "query": request.GET.get("q", ""),
@@ -183,6 +224,11 @@ def home(request):
         "path": path,
         "path_coords": path_coords,
         "route_error": route_error,
+        "selected_floor": selected_floor,
+        "selected_campus": selected_campus,
+        "floor_options": FLOOR_OPTIONS,
+        "campus_options": CAMPUS_OPTIONS,
+        "map_floors": map_floors,
     })
 
 

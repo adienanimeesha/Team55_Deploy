@@ -82,15 +82,77 @@
             display: grid;
             grid-template-columns: 390px minmax(0, 1fr);
             min-height: 0;
+            transition: grid-template-columns 0.28s ease;
+        }
+
+        /* collapsed state — sidebar slides to zero width */
+        .main.sidebar-collapsed {
+            grid-template-columns: 0px minmax(0, 1fr);
         }
 
         .sidebar {
             background: white;
             border-right: 1px solid #e5ded6;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 18px;
             box-shadow: 5px 0 16px rgba(0, 0, 0, 0.08);
             z-index: 10;
+            transition: padding 0.28s ease;
+            /* prevent content peeking out during collapse */
+            min-width: 0;
+        }
+
+        .main.sidebar-collapsed .sidebar {
+            padding: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        /* ── toggle button — anchored to the sidebar/map border, vertically centred ── */
+        .sidebar-toggle {
+            /* position relative to #main-layout which covers the full viewport below the topbar */
+            position: fixed;
+            top: 50vh;                 /* true vertical centre of the screen */
+            transform: translateY(-50%);
+            left: 390px;
+            z-index: 40;
+            width: 28px;
+            height: 56px;
+            background: var(--uq-purple);
+            border: none;
+            border-radius: 0 12px 12px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 3px 0 14px rgba(81, 36, 122, 0.35);
+            transition: left 0.28s ease, background 0.15s;
+            padding: 0;
+            color: white;
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .sidebar-toggle:hover {
+            background: #3d1a5e;
+        }
+
+        /* when sidebar is collapsed, JS updates left inline; CSS fallback: */
+        .sidebar-toggle.is-collapsed {
+            left: 0;
+            border-radius: 0 12px 12px 0;
+        }
+
+        /* arrow icon flips when collapsed */
+        .sidebar-toggle .toggle-arrow {
+            display: inline-block;
+            transition: transform 0.28s ease;
+            font-style: normal;
+        }
+
+        .main.sidebar-collapsed .sidebar-toggle .toggle-arrow {
+            transform: rotate(180deg);
         }
 
         .panel {
@@ -325,14 +387,28 @@
             background: var(--water);
         }
 
+        /* ensure the toggle button sits in the right place relative to .main */
+        #main-layout {
+            position: relative;
+        }
+
         .map-canvas {
             position: absolute;
             inset: 0;
+            z-index: 1;
             background:
                 radial-gradient(circle at 82% 76%, rgba(135, 207, 123, 0.55) 0 6%, transparent 6.3%),
                 radial-gradient(circle at 68% 27%, rgba(135, 207, 123, 0.48) 0 7%, transparent 7.3%),
                 linear-gradient(142deg, transparent 0 74%, rgba(198, 232, 240, 0.95) 74.2% 100%),
                 var(--map-bg);
+        }
+
+        /* SVG campus overview fills the entire canvas */
+        .campus-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
         }
 
         .map-toolbar {
@@ -437,7 +513,7 @@
             clip-path: polygon(0 10%, 92% 0, 100% 72%, 28% 100%, 20% 66%, 6% 64%);
         }
 
-        .b67 {
+        .b69 {
             left: 60%;
             top: 33%;
             width: 31%;
@@ -495,6 +571,465 @@
             color: var(--ink);
         }
 
+        /* screen-reader-only helper */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* ── map toolbar dropdowns ── */
+        .map-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2351247A'/%3E%3C/svg%3E") no-repeat right 10px center;
+            color: var(--uq-purple);
+            border-radius: 12px;
+            padding: 11px 30px 11px 14px;
+            font-weight: 800;
+            font-size: 14px;
+            font-family: inherit;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.16);
+            border: none;
+            cursor: pointer;
+            min-width: 110px;
+        }
+
+        .map-select:focus {
+            outline: 2px solid var(--uq-purple);
+            outline-offset: 2px;
+        }
+
+        /* ── combined floor plan view — overlays the campus SVG map ── */
+        .combined-floor-view {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            /* transparent so the campus SVG shows through the gaps */
+            background: transparent;
+            padding: 70px 20px 20px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 2;   /* above map-canvas (z-index: 1) */
+        }
+
+        .combined-floor-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 14px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+            gap: 10px;
+            /* frosted pill above the panel */
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+        }
+
+        .combined-floor-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .combined-floor-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .combined-campus-badge {
+            background: var(--uq-purple);
+            color: white;
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .combined-count-badge {
+            background: white;
+            color: var(--muted);
+            border: 1px solid #e0d9d1;
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* wrapper card that holds all buildings on this floor */
+        .combined-buildings-panel {
+            /* slightly translucent so campus map edges show through */
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 6px 32px rgba(0, 0, 0, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .combined-buildings-row {
+            display: flex;
+            align-items: stretch;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        /* one column per building */
+        .building-fp-col {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            border-right: 1.5px solid #ece6df;
+        }
+
+        .building-fp-col:last-child {
+            border-right: none;
+        }
+
+        .building-fp-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px 10px;
+            border-bottom: 1.5px solid #ece6df;
+            background: #faf8f5;
+            flex-shrink: 0;
+        }
+
+        .building-fp-name {
+            font-weight: 800;
+            font-size: 13px;
+            color: var(--ink);
+            line-height: 1.25;
+        }
+
+        .building-fp-num {
+            display: inline-block;
+            background: var(--uq-purple-soft);
+            color: var(--uq-purple);
+            border-radius: 999px;
+            padding: 2px 9px;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        /* the clickable floor-plan area */
+        .building-fp-link {
+            flex: 1;
+            display: block;
+            padding: 12px;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.12s;
+        }
+
+        .building-fp-link:hover {
+            background: #fbf7ff;
+        }
+
+        .floor-plan-map {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: #fbfaf7;
+            border: 1.5px solid #d4cdc4;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .floor-plan-map.real-layout {
+            height: auto;
+            aspect-ratio: var(--fp-aspect, 2.42 / 1);
+            background: white;
+            border-color: #b9b9b9;
+        }
+
+        .floor-plan-map .fp-inner {
+            position: absolute;
+            inset: 0;
+        }
+
+        .floor-plan-map .fp-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* ── UQ-Maps-style floor plan SVG colours ── */
+        .fp-shell    { fill: #ffffff; stroke: #2c2c2c; stroke-width: 0.45; }
+        .fp-corridor { fill: rgba(212, 205, 196, 0.55); stroke: #b0a898; stroke-width: 0.22; }
+        .fp-wall     { stroke: #2c2c2c; stroke-width: 0.38; stroke-linecap: round; }
+
+        /* real-layout (buildings with accurate outlines) keep crisp black lines */
+        .floor-plan-map.real-layout .fp-shell    { fill: #ffffff; stroke: #1a1a1a; stroke-width: 0.28; }
+        .floor-plan-map.real-layout .fp-corridor { fill: rgba(198, 192, 184, 0.5); stroke: #9a9088; stroke-width: 0.14; }
+        .floor-plan-map.real-layout .fp-wall     { stroke: #1a1a1a; stroke-width: 0.22; }
+
+        /* ── room base style ── */
+        .fp-room {
+            position: absolute;
+            left: var(--rx);
+            top: var(--ry);
+            width: var(--rw);
+            height: var(--rh);
+            border: 0.55px solid #787060;
+            background: rgba(246, 243, 238, 0.92);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            z-index: 2;
+            text-align: center;
+            padding: 1px;
+        }
+
+        /* Real-layout rooms: dark border only — NO background override so type colours
+           (which follow below) can apply freely on all floors including buildings 62 & 63 */
+        .floor-plan-map.real-layout .fp-room {
+            border-color: #1a1a1a;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           ROOM TYPE COLOUR CODING
+           All selectors start with ".floor-plan-map" so specificity = 0-3-0,
+           matching (and therefore overriding on cascade order) the real-layout
+           base rule above. This makes colours work on EVERY floor of every building.
+           ══════════════════════════════════════════════════════════════════ */
+
+        /* Teaching / lecture / general teaching room → sage green */
+        .floor-plan-map .fp-room[data-rtype*="teaching"],
+        .floor-plan-map .fp-room[data-rtype*="lecture"],
+        .floor-plan-map .fp-room[data-rtype*="theatre"] {
+            background: rgba(186, 230, 184, 0.97);
+            border-color: rgba(56, 142, 60, 0.7);
+        }
+
+        /* Computer lab (teaching or open access) → sky blue */
+        .floor-plan-map .fp-room[data-rtype*="computer"],
+        .floor-plan-map .fp-room[data-rtype*=" lab"],
+        .floor-plan-map .fp-room[data-rtype="lab"] {
+            background: rgba(179, 216, 252, 0.97);
+            border-color: rgba(30, 120, 200, 0.65);
+        }
+
+        /* Office → warm amber-yellow */
+        .floor-plan-map .fp-room[data-rtype*="office"] {
+            background: rgba(255, 244, 140, 0.97);
+            border-color: rgba(180, 140, 10, 0.6);
+        }
+
+        /* Meeting room → periwinkle */
+        .floor-plan-map .fp-room[data-rtype*="meeting"] {
+            background: rgba(200, 210, 255, 0.97);
+            border-color: rgba(80, 100, 200, 0.6);
+        }
+
+        /* Study / common study spots → soft lavender */
+        .floor-plan-map .fp-room[data-rtype*="study"] {
+            background: rgba(220, 200, 242, 0.97);
+            border-color: rgba(110, 70, 160, 0.55);
+        }
+
+        /* Stairs → deep green */
+        .floor-plan-map .fp-room[data-rtype*="stair"] {
+            background: rgba(120, 188, 118, 0.97);
+            border-color: rgba(34, 110, 34, 0.72);
+        }
+
+        /* Lift / elevator → teal-green */
+        .floor-plan-map .fp-room[data-rtype*="lift"],
+        .floor-plan-map .fp-room[data-rtype*="elevator"] {
+            background: rgba(100, 195, 175, 0.97);
+            border-color: rgba(20, 130, 110, 0.7);
+        }
+
+        /* Toilet / WC / accessible → cool slate */
+        .floor-plan-map .fp-room[data-rtype*="toilet"],
+        .floor-plan-map .fp-room[data-rtype*="bathroom"],
+        .floor-plan-map .fp-room[data-rtype*="wc"],
+        .floor-plan-map .fp-room[data-rtype*="accessible"] {
+            background: rgba(200, 215, 222, 0.97);
+            border-color: rgba(80, 108, 120, 0.6);
+        }
+
+        /* Kitchenette / food & beverage → warm peach */
+        .floor-plan-map .fp-room[data-rtype*="kitchen"],
+        .floor-plan-map .fp-room[data-rtype*="food"],
+        .floor-plan-map .fp-room[data-rtype*="beverage"] {
+            background: rgba(255, 210, 155, 0.97);
+            border-color: rgba(200, 120, 20, 0.6);
+        }
+
+        /* Corridor (room-type label) → warm grey */
+        .floor-plan-map .fp-room[data-rtype*="corridor"] {
+            background: rgba(210, 202, 193, 0.85);
+            border-color: rgba(130, 120, 110, 0.5);
+        }
+
+        /* Storage / bicycle storage → tan */
+        .floor-plan-map .fp-room[data-rtype*="storage"],
+        .floor-plan-map .fp-room[data-rtype*="bicycle"] {
+            background: rgba(220, 210, 190, 0.97);
+            border-color: rgba(140, 120, 80, 0.55);
+        }
+
+        /* Defibrillator / hand sanitiser / first aid → soft red */
+        .floor-plan-map .fp-room[data-rtype*="defibrillator"],
+        .floor-plan-map .fp-room[data-rtype*="sanitiser"],
+        .floor-plan-map .fp-room[data-rtype*="first aid"] {
+            background: rgba(255, 195, 195, 0.97);
+            border-color: rgba(200, 60, 60, 0.6);
+        }
+
+        /* "open full map" hint shown on hover */
+        .building-fp-hint {
+            font-size: 11px;
+            color: var(--uq-purple);
+            font-weight: 700;
+            margin-top: 8px;
+            text-align: right;
+            opacity: 0;
+            transition: opacity 0.12s;
+        }
+
+        .building-fp-link:hover .building-fp-hint { opacity: 1; }
+
+        .fp-room-code { font-size: 5.5px; font-weight: 800; display: block; line-height: 1.1; }
+        .fp-room-name { font-size: 4px; display: block; opacity: 0.7; line-height: 1.1; }
+
+        /* ── room type legend ── */
+        .fp-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px 16px;
+            padding: 9px 14px;
+            border-top: 1.5px solid #ece6df;
+            background: #faf8f5;
+            flex-shrink: 0;
+        }
+
+        .fp-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .fp-legend-swatch {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+            border: 1px solid rgba(0, 0, 0, 0.18);
+            flex-shrink: 0;
+        }
+
+        .floor-plan-none {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            font-size: 15px;
+            text-align: center;
+            padding: 40px;
+        }
+
+        /* keep old class working (used only as fallback empty state inside combined panel) */
+        .combined-empty {
+            width: 100%;
+            padding: 50px 24px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        /* ── inline candidate dropdowns ── */
+        .field-wrap {
+            position: relative;
+        }
+
+        .candidates-drop {
+            border: 1px solid #ddd8d1;
+            border-radius: 12px;
+            background: white;
+            max-height: 220px;
+            overflow-y: auto;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+            margin-top: 6px;
+            z-index: 50;
+        }
+
+        .cand-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            border: none;
+            border-bottom: 1px solid #eee9e3;
+            background: none;
+            padding: 10px 13px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--ink);
+        }
+
+        .cand-btn:last-child {
+            border-bottom: none;
+        }
+
+        .cand-btn:hover {
+            background: var(--uq-purple-soft);
+        }
+
+        .cand-meta {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .input-row.confirmed-row {
+            border-color: var(--uq-purple);
+            background: var(--uq-purple-soft);
+        }
+
+        .input-row.confirmed-row input {
+            color: var(--uq-purple);
+            font-weight: 700;
+        }
+
+        .selection-meta {
+            color: var(--muted);
+            font-size: 12px;
+            padding: 4px 12px 2px;
+        }
+
         @media (max-width: 920px) {
             .app {
                 grid-template-rows: auto auto;
@@ -510,12 +1045,23 @@
             .main {
                 display: flex;
                 flex-direction: column;
+                position: relative;
             }
 
             .sidebar {
                 order: 2;
                 border-right: none;
                 box-shadow: none;
+                width: 100%;
+                transition: max-height 0.28s ease, padding 0.28s ease;
+                max-height: 2000px;
+                overflow: hidden;
+            }
+
+            /* on mobile, collapsed sidebar hides below the map */
+            .main.sidebar-collapsed .sidebar {
+                max-height: 0;
+                padding: 0;
             }
 
             .map-wrap {
@@ -528,6 +1074,43 @@
                 bottom: 92px;
                 right: 16px;
             }
+
+            /* on mobile: fixed pill at centre-left edge of screen */
+            .sidebar-toggle {
+                position: fixed;
+                top: 50vh;
+                left: 0 !important;
+                right: auto;
+                bottom: auto;
+                transform: translateY(-50%);
+                width: 28px;
+                height: 56px;
+                border-radius: 0 12px 12px 0;
+                box-shadow: 3px 0 14px rgba(81, 36, 122, 0.35);
+            }
+
+            .sidebar-toggle.is-collapsed .toggle-arrow {
+                transform: rotate(180deg);
+            }
+
+            /* stack buildings vertically on narrow screens */
+            .combined-buildings-row {
+                flex-direction: column;
+            }
+
+            .building-fp-col {
+                border-right: none;
+                border-bottom: 1.5px solid #ece6df;
+            }
+
+            .building-fp-col:last-child {
+                border-bottom: none;
+            }
+
+            .combined-floor-heading {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
@@ -538,80 +1121,106 @@
             <div class="brand-mark">UQ</div>
             <div>Indoor Maps</div>
         </div>
-        <div class="top-actions">
-            <div class="top-pill">St Lucia</div>
-            <div class="top-pill">Supported buildings</div>
-        </div>
     </header>
 
-    <main class="main">
-        <aside class="sidebar">
+    <main class="main" id="main-layout">
+
+        {# ── sidebar collapse/expand toggle ── #}
+        <button class="sidebar-toggle" id="sidebar-toggle"
+                aria-label="Toggle sidebar" title="Toggle sidebar">
+            <span class="toggle-arrow">&#8249;</span>
+        </button>
+
+        <aside class="sidebar" id="sidebar">
             <section class="panel">
                 <div class="panel-title">Plan a route</div>
-                <p class="hint">Search by room, stair, lift, or building. Routes use the indoor navigation data when matching nodes exist.</p>
-                <form method="get" class="route-form">
-                    {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
-                    {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
+                <p class="hint">Search any rooms, stairs, lifts, or buildings.</p>
+                <form method="get" class="route-form" id="route-form">
+                    <input type="hidden" name="from_id" id="from-id-input" value="{{ from_id }}">
+                    <input type="hidden" name="to_id" id="to-id-input" value="{{ to_id }}">
                     {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
-                    <label class="input-row">
-                        <span class="dot"></span>
-                        <input type="text" name="from" placeholder="From, e.g. 101 or Building 62" value="{{ from_q }}">
-                    </label>
-                    <label class="input-row">
-                        <span class="dot to"></span>
-                        <input type="text" name="to" placeholder="To, e.g. 212 or stairs" value="{{ to_q }}">
-                    </label>
+
+                    <div class="field-wrap">
+                        <label class="input-row{% if from_node %} confirmed-row{% endif %}" id="from-row" aria-label="Starting location">
+                            <span class="dot"></span>
+                            <input type="text" name="from" id="from-input"
+                                   placeholder="From, e.g. 101 or Building 62"
+                                   value="{% if from_node %}{{ from_node.label }}{% else %}{{ from_q }}{% endif %}"
+                                   autocomplete="off">
+                        </label>
+                        {% if from_node %}
+                            <div class="selection-meta">{{ from_node.building }} · Floor {{ from_node.floor }}</div>
+                        {% endif %}
+                        {% if from_candidates %}
+                        <div class="candidates-drop" id="from-drop">
+                            {% for c in from_candidates %}
+                            {% if c.kind == "node" %}
+                            <button type="button" class="cand-btn"
+                                    data-id="{{ c.id }}"
+                                    data-label="{{ c.label }}"
+                                    data-field="from">
+                                <strong>{{ c.label }}</strong>
+                                <div class="cand-meta">{{ c.building }} · Floor {{ c.floor }}</div>
+                            </button>
+                            {% else %}
+                            <button type="button" class="cand-btn"
+                                    data-id=""
+                                    data-label="{{ c.label }}"
+                                    data-field="from"
+                                    data-href="{% url 'building_detail' c.building_id %}?floor={{ c.floor }}&room={{ c.room_code }}">
+                                <strong>{{ c.label }}</strong>
+                                <div class="cand-meta">{{ c.building }} · {{ c.floor_label }} · floorplan only</div>
+                            </button>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="field-wrap">
+                        <label class="input-row{% if to_node %} confirmed-row{% endif %}" id="to-row" aria-label="Destination">
+                            <span class="dot to"></span>
+                            <input type="text" name="to" id="to-input"
+                                   placeholder="To, e.g. 212 or stairs"
+                                   value="{% if to_node %}{{ to_node.label }}{% else %}{{ to_q }}{% endif %}"
+                                   autocomplete="off">
+                        </label>
+                        {% if to_node %}
+                            <div class="selection-meta">{{ to_node.building }} · Floor {{ to_node.floor }}</div>
+                        {% endif %}
+                        {% if to_candidates %}
+                        <div class="candidates-drop" id="to-drop">
+                            {% for c in to_candidates %}
+                            {% if c.kind == "node" %}
+                            <button type="button" class="cand-btn"
+                                    data-id="{{ c.id }}"
+                                    data-label="{{ c.label }}"
+                                    data-field="to">
+                                <strong>{{ c.label }}</strong>
+                                <div class="cand-meta">{{ c.building }} · Floor {{ c.floor }}</div>
+                            </button>
+                            {% else %}
+                            <button type="button" class="cand-btn"
+                                    data-id=""
+                                    data-label="{{ c.label }}"
+                                    data-field="to"
+                                    data-href="{% url 'building_detail' c.building_id %}?floor={{ c.floor }}&room={{ c.room_code }}">
+                                <strong>{{ c.label }}</strong>
+                                <div class="cand-meta">{{ c.building }} · {{ c.floor_label }} · floorplan only</div>
+                            </button>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
                     <button type="submit" class="btn">Get directions</button>
+
+                    {% if route_error %}
+                        <div class="error">{{ route_error }}</div>
+                    {% endif %}
                 </form>
-
-                {% if from_node %}
-                    <div class="confirmed">From: {{ from_node.label }}<br>{{ from_node.building }} · Floor {{ from_node.floor }}</div>
-                {% endif %}
-                {% if to_node %}
-                    <div class="confirmed">To: {{ to_node.label }}<br>{{ to_node.building }} · Floor {{ to_node.floor }}</div>
-                {% endif %}
-                {% if route_error %}
-                    <div class="error">{{ route_error }}</div>
-                {% endif %}
             </section>
-
-            {% if from_candidates %}
-                <section class="panel">
-                    <div class="panel-title">Choose start</div>
-                    {% for candidate in from_candidates %}
-                        {% if candidate.kind == "node" %}
-                            <a class="candidate-link" href="?from_id={{ candidate.id }}&from={{ from_q }}&to={{ to_q }}{% if to_id %}&to_id={{ to_id }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
-                                <strong>{{ candidate.label }}</strong>
-                                <div class="candidate-meta">{{ candidate.building }} · Floor {{ candidate.floor }} · {{ candidate.type }}</div>
-                            </a>
-                        {% else %}
-                            <a class="candidate-link" href="{% url 'building_detail' candidate.building_id %}?floor={{ candidate.floor }}&room={{ candidate.room_code }}">
-                                <strong>{{ candidate.label }}</strong>
-                                <div class="candidate-meta">{{ candidate.building }} · {{ candidate.floor_label }} · floorplan only</div>
-                            </a>
-                        {% endif %}
-                    {% endfor %}
-                </section>
-            {% endif %}
-
-            {% if to_candidates %}
-                <section class="panel">
-                    <div class="panel-title">Choose destination</div>
-                    {% for candidate in to_candidates %}
-                        {% if candidate.kind == "node" %}
-                            <a class="candidate-link" href="?to_id={{ candidate.id }}&to={{ to_q }}&from={{ from_q }}{% if from_id %}&from_id={{ from_id }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
-                                <strong>{{ candidate.label }}</strong>
-                                <div class="candidate-meta">{{ candidate.building }} · Floor {{ candidate.floor }} · {{ candidate.type }}</div>
-                            </a>
-                        {% else %}
-                            <a class="candidate-link" href="{% url 'building_detail' candidate.building_id %}?floor={{ candidate.floor }}&room={{ candidate.room_code }}">
-                                <strong>{{ candidate.label }}</strong>
-                                <div class="candidate-meta">{{ candidate.building }} · {{ candidate.floor_label }} · floorplan only</div>
-                            </a>
-                        {% endif %}
-                    {% endfor %}
-                </section>
-            {% endif %}
 
             {% if path %}
                 {% with path|last as last_node %}
@@ -660,55 +1269,372 @@
                     </div>
                 {% endif %}
             {% empty %}
-                <section class="panel empty">No buildings or rooms found. Try 62, 63, 67, 101, 225, or 148.</section>
+                <section class="panel empty">No buildings or rooms found. Try 62, 63, 69, 101, 225, or 148.</section>
             {% endfor %}
         </aside>
 
         <section class="map-wrap">
-            <div class="map-canvas">
-                <div class="green-space one"></div>
-                <div class="green-space two"></div>
-                <div class="road a"></div>
-                <div class="road b"></div>
-                <div class="road c"></div>
-                <div class="walkway a"></div>
-                <div class="walkway b"></div>
-                <div class="walkway c"></div>
-                <div class="walkway d"></div>
 
-                <a class="building-shape b62 active" href="{% url 'building_detail' '62' %}">
-                    <span class="building-label">John Hines<br>(Building 62)</span>
-                </a>
-                <a class="building-shape b63" href="{% url 'building_detail' '63' %}">
-                    <span class="building-label">Physiology Lecture Theatres<br>(Building 63)</span>
-                </a>
-                <a class="building-shape b67" href="{% url 'building_detail' '67' %}">
-                    <span class="building-label">Building 67<br>Teaching Rooms</span>
-                </a>
+            {# ── toolbar: campus + floor dropdowns ── #}
+            <div class="map-toolbar">
+                <form id="map-ctrl-form" method="get" style="display:flex; gap:10px;">
+                    {# preserve route params so changing floor doesn't clear the route #}
+                    {% if from_q %}<input type="hidden" name="from" value="{{ from_q }}">{% endif %}
+                    {% if to_q %}<input type="hidden" name="to" value="{{ to_q }}">{% endif %}
+                    {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
+                    {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
+                    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
 
-                <div class="poi-label bike">Bike racks</div>
-                <div class="poi-label food">Vending machines</div>
-                <div class="poi-label toilet">Accessible toilets</div>
-            </div>
+                    <label for="campus-select" class="sr-only">Campus</label>
+                    <select id="campus-select" name="campus" class="map-select"
+                            onchange="document.getElementById('map-ctrl-form').submit()">
+                        {% for c in campus_options %}
+                        <option value="{{ c.value }}"{% if c.value == selected_campus %} selected{% endif %}>{{ c.label }}</option>
+                        {% endfor %}
+                    </select>
 
-            <div class="map-search">
-                <form method="get" class="search-row">
-                    <input type="text" name="q" placeholder="Search in St Lucia" value="{{ query }}">
-                    <button type="submit" class="mini-btn">Go</button>
+                    <label for="floor-select" class="sr-only">Floor</label>
+                    <select id="floor-select" name="floor" class="map-select"
+                            onchange="document.getElementById('map-ctrl-form').submit()">
+                        {% for f in floor_options %}
+                        <option value="{{ f.value }}"{% if f.value == selected_floor %} selected{% endif %}>{{ f.label }}</option>
+                        {% endfor %}
+                    </select>
                 </form>
             </div>
 
-            <div class="map-toolbar">
-                <div class="map-control">St Lucia</div>
-                <div class="map-control">Floor 1</div>
+            {# ══════════════════════════════════════════════════════
+                 BASE LAYER — campus SVG map, always visible
+                 (same layout as Herston / Gatton overview)
+            ══════════════════════════════════════════════════════ #}
+            <div class="map-canvas">
+                {# full-size SVG campus map — acts as the permanent background #}
+                <svg class="campus-svg" viewBox="0 0 1366 880" preserveAspectRatio="xMidYMid slice"
+                     xmlns="http://www.w3.org/2000/svg">
+
+                    {# ── green spaces ── #}
+                    <ellipse cx="1100" cy="110" rx="130" ry="90" fill="#b6ddb0" opacity="0.85"/>
+                    <ellipse cx="1220" cy="760" rx="90"  ry="70" fill="#b6ddb0" opacity="0.80"/>
+                    <ellipse cx="60"   cy="820" rx="70"  ry="55" fill="#b6ddb0" opacity="0.75"/>
+                    <path d="M1300,0 Q1366,80 1366,200 Q1320,160 1260,120 Q1290,60 1300,0Z"
+                          fill="#a8d4a2" opacity="0.7"/>
+
+                    {# ── water ── #}
+                    <path d="M1200,820 Q1300,810 1366,840 L1366,880 L1180,880Z"
+                          fill="#b8dde8" opacity="0.85"/>
+
+                    {# ── roads ── #}
+                    <rect x="-20" y="440" width="700" height="38" rx="6"
+                          fill="white" stroke="#ccc8c0" stroke-width="1.5" opacity="0.92"
+                          transform="rotate(-14,340,459)"/>
+                    <rect x="530" y="500" width="870" height="38" rx="6"
+                          fill="white" stroke="#ccc8c0" stroke-width="1.5" opacity="0.92"
+                          transform="rotate(5,965,519)"/>
+                    <rect x="700" y="0"   width="36"  height="500" rx="6"
+                          fill="white" stroke="#ccc8c0" stroke-width="1.5" opacity="0.92"
+                          transform="rotate(60,718,250)"/>
+
+                    {# ── walkways ── #}
+                    <rect x="130" y="270"  width="460" height="13" rx="999"
+                          fill="white" stroke="#d8d4cc" stroke-width="1" opacity="0.9"
+                          transform="rotate(13,360,277)"/>
+                    <rect x="200" y="720"  width="520" height="13" rx="999"
+                          fill="white" stroke="#d8d4cc" stroke-width="1" opacity="0.9"
+                          transform="rotate(-16,460,727)"/>
+                    <rect x="730" y="650"  width="290" height="11" rx="999"
+                          fill="white" stroke="#d8d4cc" stroke-width="1" opacity="0.9"
+                          transform="rotate(28,875,656)"/>
+                    <rect x="840" y="310"  width="230" height="11" rx="999"
+                          fill="white" stroke="#d8d4cc" stroke-width="1" opacity="0.9"
+                          transform="rotate(-10,955,316)"/>
+
+                    {# ── building footprint: 62 (John Hines) ── #}
+                    <g transform="translate(100,158) rotate(16,280,130)" opacity="0.45">
+                        <rect x="0" y="0" width="560" height="260" rx="4"
+                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.5"/>
+                        <text x="280" y="138" text-anchor="middle" font-size="15" font-weight="800"
+                              fill="#2c2926" font-family="Arial,sans-serif">John Hines (62)</text>
+                    </g>
+
+                    {# ── building footprint: 63 ── #}
+                    <g transform="translate(72,476) rotate(14,210,135)" opacity="0.45">
+                        <rect x="0" y="0" width="420" height="270" rx="4"
+                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.5"/>
+                        <text x="210" y="143" text-anchor="middle" font-size="13" font-weight="800"
+                              fill="#2c2926" font-family="Arial,sans-serif">Physiology LT (63)</text>
+                    </g>
+
+                    {# ── building footprint: 69 ── #}
+                    <g transform="translate(730,260) rotate(14,185,190)" opacity="0.45">
+                        <rect x="0" y="0" width="370" height="380" rx="4"
+                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.5"/>
+                        <text x="185" y="198" text-anchor="middle" font-size="14" font-weight="800"
+                              fill="#2c2926" font-family="Arial,sans-serif">Building 69</text>
+                    </g>
+
+                    {# ── POI labels ── #}
+                    <g font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#4f4840">
+                        <rect x="248" y="96"  width="100" height="22" rx="5"
+                              fill="rgba(255,255,255,0.82)" stroke="#d4cdc4"/>
+                        <text x="298" y="112" text-anchor="middle">🚲 Bike racks</text>
+                        <rect x="60"  y="400" width="132" height="22" rx="5"
+                              fill="rgba(255,255,255,0.82)" stroke="#d4cdc4"/>
+                        <text x="126" y="416" text-anchor="middle">🍎 Vending machines</text>
+                        <rect x="560" y="778" width="148" height="22" rx="5"
+                              fill="rgba(255,255,255,0.82)" stroke="#d4cdc4"/>
+                        <text x="634" y="794" text-anchor="middle">♿ Accessible toilets</text>
+                    </g>
+                </svg>
             </div>
 
+            {# ══════════════════════════════════════════════════════
+                 OVERLAY LAYER — floor plan panels (when data exists)
+                 Sits on top of the campus SVG; panel background is
+                 semi-transparent so the map shows through the gaps.
+            ══════════════════════════════════════════════════════ #}
+            {% if map_floors %}
+            <div class="combined-floor-view">
+
+                {# header row: floor label + campus badge + building count #}
+                <div class="combined-floor-heading">
+                    <div class="combined-floor-title">
+                        {% for f in floor_options %}{% if f.value == selected_floor %}{{ f.label }}{% endif %}{% endfor %}
+                        &nbsp;&mdash;&nbsp;
+                        {% for c in campus_options %}{% if c.value == selected_campus %}{{ c.label }}{% endif %}{% endfor %}
+                        Campus
+                    </div>
+                    <div class="combined-floor-meta">
+                        <span class="combined-count-badge">
+                            {{ map_floors|length }} building{{ map_floors|length|pluralize }}
+                        </span>
+                        <span class="combined-campus-badge">St Lucia</span>
+                    </div>
+                </div>
+
+                {# single panel holding all buildings side by side #}
+                <div class="combined-buildings-panel">
+                    <div class="combined-buildings-row">
+                        {% for item in map_floors %}
+                        <div class="building-fp-col">
+
+                            {# per-building header strip #}
+                            <div class="building-fp-header">
+                                <span class="building-fp-name">{{ item.building.name }}</span>
+                                <span class="building-fp-num">Bldg {{ item.building.number }}</span>
+                            </div>
+
+                            {# clickable floor plan that opens the building detail page #}
+                            <a class="building-fp-link"
+                               href="{% url 'building_detail' item.building.id %}?floor={{ item.floor.level }}">
+                                <div class="floor-plan-map{% if item.floor.real_layout %} real-layout{% endif %}"
+                                     {% if item.floor.real_layout %}style="--fp-aspect: {{ item.floor.aspect_ratio|default:'2.42 / 1' }};"{% endif %}>
+                                    <div class="fp-inner">
+                                        <svg class="fp-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                            <polygon class="fp-shell" points="{{ item.floor.outline_points }}"></polygon>
+                                            {% for corridor in item.floor.corridors %}
+                                            <rect class="fp-corridor"
+                                                  x="{{ corridor.x }}" y="{{ corridor.y }}"
+                                                  width="{{ corridor.w }}" height="{{ corridor.h }}"
+                                                  rx="{% if item.floor.real_layout %}0{% else %}1{% endif %}"></rect>
+                                            {% endfor %}
+                                            {% for wall in item.floor.walls %}
+                                            <line class="fp-wall"
+                                                  x1="{{ wall.x1 }}" y1="{{ wall.y1 }}"
+                                                  x2="{{ wall.x2 }}" y2="{{ wall.y2 }}"></line>
+                                            {% endfor %}
+                                        </svg>
+                                        {% for room in item.floor.rooms %}
+                                        <div class="fp-room"
+                                             data-rtype="{{ room.type|lower }}"
+                                             style="--rx:{{ room.x }}%;--ry:{{ room.y }}%;--rw:{{ room.w }}%;--rh:{{ room.h }}%;">
+                                            <span class="fp-room-code">{{ room.code }}</span>
+                                            <span class="fp-room-name">{{ room.name }}</span>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="building-fp-hint">Open full map &rarr;</div>
+                            </a>
+
+                        </div>{# /building-fp-col #}
+                        {% empty %}
+                        <div class="combined-empty">
+                            No floor plans available for
+                            <strong>{% for c in campus_options %}{% if c.value == selected_campus %}{{ c.label }}{% endif %}{% endfor %}</strong>
+                            &mdash;
+                            {% for f in floor_options %}{% if f.value == selected_floor %}{{ f.label }}{% endif %}{% endfor %}.
+                        </div>
+                        {% endfor %}
+                    </div>{# /combined-buildings-row #}
+
+                    {# ── room type colour legend (matches actual UQ room types in the data) ── #}
+                    <div class="fp-legend">
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(186,230,184,0.97);border-color:rgba(56,142,60,0.7)"></div>
+                            Teaching / Lecture
+                        </div>
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(179,216,252,0.97);border-color:rgba(30,120,200,0.65)"></div>
+                            Computer Lab
+                        </div>
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(255,244,140,0.97);border-color:rgba(180,140,10,0.6)"></div>
+                            Office
+                        </div>
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(200,210,255,0.97);border-color:rgba(80,100,200,0.6)"></div>
+                            Meeting Room
+                        </div>
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(220,200,242,0.97);border-color:rgba(110,70,160,0.55)"></div>
+                            Study / Common
+                        </div>
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(120,188,118,0.97);border-color:rgba(34,110,34,0.72)"></div>
+                            Stairs
+                        </div>
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(100,195,175,0.97);border-color:rgba(20,130,110,0.7)"></div>
+                            Lift / Elevator
+                        </div>
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(200,215,222,0.97);border-color:rgba(80,108,120,0.6)"></div>
+                            Toilet / WC
+                        </div>
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(255,210,155,0.97);border-color:rgba(200,120,20,0.6)"></div>
+                            Food &amp; Beverage
+                        </div>
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(255,195,195,0.97);border-color:rgba(200,60,60,0.6)"></div>
+                            First Aid / Safety
+                        </div>
+                        <div class="fp-legend-item">
+                            <div class="fp-legend-swatch" style="background:rgba(246,243,238,0.92);border-color:#787060"></div>
+                            General Room
+                        </div>
+                    </div>
+                </div>{# /combined-buildings-panel #}
+
+            </div>{# /combined-floor-view #}
+
+            {% endif %}
+
             <div class="focus-note">
-                <strong>Focused map view</strong><br>
-                This prototype shows the supported indoor-map area instead of the whole UQ campus, so room search and floor plans line up with the loaded backend data.
+                <strong>Combined floor view</strong><br>
+                All supported buildings at the selected floor, side by side. Click a building to open its full interactive map.
             </div>
         </section>
     </main>
 </div>
+<script>
+(function () {
+    function selectCandidate(field, id, label) {
+        var input   = document.getElementById(field + '-input');
+        var idInput = document.getElementById(field + '-id-input');
+        var row     = document.getElementById(field + '-row');
+        var drop    = document.getElementById(field + '-drop');
+
+        if (input)   input.value = label;
+        if (idInput) idInput.value = id;
+        if (row)     row.classList.add('confirmed-row');
+        if (drop)    drop.style.display = 'none';
+
+        // Auto-submit once both ends are chosen
+        var fromId = document.getElementById('from-id-input');
+        var toId   = document.getElementById('to-id-input');
+        if (fromId && toId && fromId.value && toId.value) {
+            document.getElementById('route-form').submit();
+        }
+    }
+
+    // Candidate button clicks
+    document.querySelectorAll('.cand-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (this.dataset.href) {
+                window.location.href = this.dataset.href;
+                return;
+            }
+            selectCandidate(this.dataset.field, this.dataset.id, this.dataset.label);
+        });
+    });
+
+    // Typing in the input clears the confirmed selection and reopens the dropdown
+    ['from', 'to'].forEach(function (field) {
+        var input   = document.getElementById(field + '-input');
+        var idInput = document.getElementById(field + '-id-input');
+        var row     = document.getElementById(field + '-row');
+        var drop    = document.getElementById(field + '-drop');
+        if (!input) return;
+
+        input.addEventListener('input', function () {
+            if (idInput) idInput.value = '';
+            if (row)     row.classList.remove('confirmed-row');
+            if (drop)    drop.style.display = '';
+        });
+    });
+
+    // Click outside any field-wrap → close all dropdowns
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.field-wrap')) {
+            document.querySelectorAll('.candidates-drop').forEach(function (d) {
+                d.style.display = 'none';
+            });
+        }
+    });
+
+    // ── Sidebar collapse / expand ──────────────────────────────────────────
+    (function () {
+        var main   = document.getElementById('main-layout');
+        var toggle = document.getElementById('sidebar-toggle');
+        if (!main || !toggle) return;
+
+        var STORAGE_KEY = 'uq-sidebar-collapsed';
+
+        function isCollapsed() {
+            return main.classList.contains('sidebar-collapsed');
+        }
+
+        var SIDEBAR_WIDTH = 390; // must match CSS grid column width
+
+        function setCollapsed(collapsed) {
+            if (collapsed) {
+                main.classList.add('sidebar-collapsed');
+                toggle.classList.add('is-collapsed');
+                toggle.style.left = '0px';
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.setAttribute('title', 'Show sidebar');
+            } else {
+                main.classList.remove('sidebar-collapsed');
+                toggle.classList.remove('is-collapsed');
+                toggle.style.left = SIDEBAR_WIDTH + 'px';
+                toggle.setAttribute('aria-expanded', 'true');
+                toggle.setAttribute('title', 'Hide sidebar');
+            }
+            try {
+                localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
+            } catch (storageErr) {
+                // localStorage unavailable (private browsing, storage full, etc.) — silently skip persistence
+                console.debug('Sidebar state could not be saved:', storageErr);
+            }
+        }
+
+        // Restore last state from localStorage
+        try {
+            if (localStorage.getItem(STORAGE_KEY) === '1') {
+                setCollapsed(true);
+            }
+        } catch (storageErr) {
+            // localStorage unavailable — default to expanded sidebar
+            console.debug('Sidebar state could not be restored:', storageErr);
+        }
+
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();   // prevent dropdown-close handler firing
+            setCollapsed(!isCollapsed());
+        });
+    }());
+}());
+</script>
 </body>
 </html>
