@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Get Directions — UQ Indoor Maps</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; background: #f4f1ec; color: #2d2926; }
+        .page { max-width: 800px; margin: 0 auto; padding: 32px; }
+        .brand { font-size: 28px; font-weight: 800; color: #51247A; margin-bottom: 28px; }
+        .brand a { color: inherit; text-decoration: none; }
+        .card { background: white; border-radius: 20px; padding: 28px; box-shadow: 0 4px 18px rgba(0,0,0,0.08); margin-bottom: 24px; }
+        h1 { margin: 0 0 20px; font-size: 28px; }
+        h2 { margin: 0 0 16px; font-size: 18px; color: #51247A; }
+        .form-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        input[type=text] { flex: 1; min-width: 180px; padding: 14px 16px; border: 2px solid #ddd; border-radius: 14px; font-size: 16px; }
+        .btn { background: #51247A; color: white; border: none; border-radius: 14px; padding: 0 22px; font-size: 16px; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; line-height: 50px; }
+        .btn-outline { background: white; color: #51247A; border: 2px solid #51247A; border-radius: 14px; padding: 10px 16px; font-size: 14px; font-weight: bold; cursor: pointer; text-decoration: none; display: block; margin-bottom: 10px; }
+        .btn-outline:hover { background: #efe6f7; }
+        .error { background: #fff0f0; border: 2px solid #f5c6c6; border-radius: 14px; padding: 16px 20px; color: #c0392b; margin-bottom: 24px; }
+        .candidate-meta { font-size: 13px; color: #6f6860; margin-top: 2px; }
+        .step { display: flex; align-items: flex-start; gap: 16px; padding: 14px 0; border-bottom: 1px solid #f0ece6; }
+        .step:last-child { border-bottom: none; }
+        .step-num { background: #51247A; color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; flex-shrink: 0; }
+        .step-label { font-size: 15px; }
+        .step-meta { font-size: 13px; color: #6f6860; margin-top: 3px; }
+        .tag { display: inline-block; background: #efe6f7; color: #51247A; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: bold; margin-left: 6px; }
+        .confirmed { background: #efe6f7; border-radius: 10px; padding: 8px 14px; font-size: 14px; color: #51247A; font-weight: bold; margin-bottom: 14px; }
+    </style>
+</head>
+<body>
+<div class="page">
+    <div class="brand"><a href="/">UQ Indoor Maps</a></div>
+
+    <div class="card">
+        <h1>Get Directions</h1>
+        <form method="get" class="form-row">
+            {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
+            {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
+            <input type="text" name="from" placeholder="From (e.g. Room 101, Subway, Stairs)" value="{{ from_q }}">
+            <input type="text" name="to" placeholder="To (e.g. Room 212, Lift)" value="{{ to_q }}">
+            <button type="submit" class="btn">Go</button>
+        </form>
+
+        {% if from_node %}
+            <div class="confirmed" style="margin-top:16px;">From: {{ from_node.label }} — {{ from_node.building }}, Floor {{ from_node.floor }}</div>
+        {% endif %}
+        {% if to_node %}
+            <div class="confirmed">To: {{ to_node.label }} — {{ to_node.building }}, Floor {{ to_node.floor }}</div>
+        {% endif %}
+    </div>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if from_candidates %}
+        <div class="card">
+            <h2>Multiple matches for "{{ from_q }}" — which one did you mean?</h2>
+            {% for node in from_candidates %}
+                <a class="btn-outline" href="?from_id={{ node.id }}&from={{ from_q }}&to={{ to_q }}{% if to_id %}&to_id={{ to_id }}{% endif %}">
+                    {{ node.label }}
+                    <div class="candidate-meta">{{ node.building }} · Floor {{ node.floor }} · {{ node.type }}</div>
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if to_candidates %}
+        <div class="card">
+            <h2>Multiple matches for "{{ to_q }}" — which one did you mean?</h2>
+            {% for node in to_candidates %}
+                <a class="btn-outline" href="?to_id={{ node.id }}&to={{ to_q }}&from={{ from_q }}{% if from_id %}&from_id={{ from_id }}{% endif %}">
+                    {{ node.label }}
+                    <div class="candidate-meta">{{ node.building }} · Floor {{ node.floor }} · {{ node.type }}</div>
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if path %}
+        {% with path|last as last_node %}
+        <div class="card">
+            <strong>{{ path|length|add:"-1" }} step{{ path|length|add:"-1"|pluralize }}</strong> from
+            <strong>{{ path.0.label }}</strong> to <strong>{{ last_node.label }}</strong>
+
+            {% if path_coords %}
+                <div id="map" style="height: 360px; border-radius: 14px; margin-top: 20px;"></div>
+            {% endif %}
+
+            <div style="margin-top: 20px;">
+                {% for node in path %}
+                    <div class="step">
+                        <div class="step-num">{{ forloop.counter }}</div>
+                        <div>
+                            <div class="step-label">
+                                {{ node.label }}
+                                <span class="tag">{{ node.type }}</span>
+                            </div>
+                            <div class="step-meta">{{ node.building }} · Floor {{ node.floor }}</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endwith %}
+    {% endif %}
+</div>
+{% if path_coords %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+X/ibW7URHiY45cA=" crossorigin=""></script>
+<script>
+(function () {
+    var coords = {{ path_coords|safe }};
+    if (coords.length < 2) return;
+
+    var map = L.map('map');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var latlngs = coords.map(function (c) { return [c.lat, c.lng]; });
+    L.polyline(latlngs, { color: '#51247A', weight: 5, opacity: 0.8 }).addTo(map);
+
+    var startIcon = L.divIcon({ className: '', html: '<div style="background:#2ecc71;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
+    var endIcon   = L.divIcon({ className: '', html: '<div style="background:#51247A;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
+
+    L.marker(latlngs[0], { icon: startIcon }).addTo(map).bindPopup(coords[0].label);
+    L.marker(latlngs[latlngs.length - 1], { icon: endIcon }).addTo(map).bindPopup(coords[coords.length - 1].label);
+
+    map.fitBounds(L.polyline(latlngs).getBounds(), { padding: [40, 40] });
+}());
+</script>
+{% endif %}
+</body>
+</html>

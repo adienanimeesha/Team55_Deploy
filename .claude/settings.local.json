@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Invoke-RestMethod \"https://api.mazemap.com/api/campuses/?q=university+of+queensland\")"
+    ]
+  }
+}
