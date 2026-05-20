@@ -326,6 +326,51 @@
             font-weight: 800;
         }
 
+        .simplified-directions {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .direction-step {
+            display: grid;
+            grid-template-columns: 28px 1fr;
+            gap: 10px;
+            padding: 14px 0;
+            border-top: 1px solid #eee9e3;
+        }
+
+        .direction-step:first-child {
+            border-top: none;
+        }
+
+        .step-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .step-description {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ink);
+            line-height: 1.4;
+        }
+
+        .step-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .secondary {
+            font-size: 11px;
+            color: #999;
+            font-weight: 400;
+        }
+
         .tag {
             display: inline-block;
             margin-left: 5px;
@@ -1308,16 +1353,38 @@
             {% if path %}
                 {% with path|last as last_node %}
                     <section class="panel">
-                        <div class="route-summary">{{ path|length|add:"-1" }} step{{ path|length|add:"-1"|pluralize }} from {{ path.0.label }} to {{ last_node.label }}</div>
-                        {% for node in path %}
-                            <div class="step">
-                                <div class="step-num">{{ forloop.counter }}</div>
-                                <div>
-                                    <div>{{ node.label }}<span class="tag">{{ node.type }}</span></div>
-                                    <div class="step-meta">{{ node.building }} · Floor {{ node.floor }}</div>
-                                </div>
+                        {% if simplified_segments %}
+                            <div class="route-summary">{{ simplified_segments|length }} instruction{{ simplified_segments|length|pluralize }} from {{ path.0.label }} to {{ last_node.label }}</div>
+                            <div class="simplified-directions">
+                                {% for segment in simplified_segments %}
+                                    <div class="direction-step">
+                                        <div class="step-num">{{ forloop.counter }}</div>
+                                        <div class="step-content">
+                                            <div class="step-description">{{ segment.description }}</div>
+                                            {% if segment.intermediate_nodes %}
+                                                <div class="step-meta">
+                                                    <span class="tag">{{ segment.turn_direction }}</span>
+                                                    {% if segment.intermediate_nodes|length > 0 %}
+                                                        <span class="secondary">Passes through {{ segment.intermediate_nodes|length }} location{{ segment.intermediate_nodes|length|pluralize }}</span>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
                             </div>
-                        {% endfor %}
+                        {% else %}
+                            <div class="route-summary">{{ path|length|add:"-1" }} step{{ path|length|add:"-1"|pluralize }} from {{ path.0.label }} to {{ last_node.label }}</div>
+                            {% for node in path %}
+                                <div class="step">
+                                    <div class="step-num">{{ forloop.counter }}</div>
+                                    <div>
+                                        <div>{{ node.label }}<span class="tag">{{ node.type }}</span></div>
+                                        <div class="step-meta">{{ node.building }} · Floor {{ node.floor }}</div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
                     </section>
                 {% endwith %}
             {% endif %}

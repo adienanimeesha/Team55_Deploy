@@ -5,6 +5,7 @@ from django.shortcuts import render
 from .data import BUILDINGS
 from indoor_nav.models import Node
 from indoor_nav.pathfinding import dijkstra
+from indoor_nav.path_simplification import simplify_path, format_directions
 
 
 def find_building(building_id):
@@ -131,13 +132,16 @@ def _building_results(query):
 def _run_route(from_q, from_id, to_q, to_id):
     from_node, from_candidates = _resolve_node(from_q, from_id)
     to_node, to_candidates = _resolve_node(to_q, to_id)
-    path = path_coords = route_error = None
+    path = path_coords = route_error = simplified_segments = None
 
     if from_node and to_node:
         path, _ = dijkstra(from_node.id, to_node.id)
         if path is None:
             route_error = f'No path found between "{from_node.label}" and "{to_node.label}".'
         else:
+            # Generate simplified path segments
+            simplified_segments = simplify_path(path, angle_threshold=15.0)
+            
             coords = [
                 {'lat': n.lat, 'lng': n.lng, 'label': n.label}
                 for n in path if n.lat is not None and n.lng is not None
@@ -149,7 +153,7 @@ def _run_route(from_q, from_id, to_q, to_id):
             _missing_error(from_q, from_node, from_candidates)
             or _missing_error(to_q, to_node, to_candidates)
         )
-    return from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error
+    return from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments
 
 
 FLOOR_OPTIONS = [
@@ -187,11 +191,11 @@ def home(request):
     from_id = request.GET.get('from_id', '').strip()
     to_id = request.GET.get('to_id', '').strip()
 
-    from_node = to_node = path = path_coords = route_error = None
+    from_node = to_node = path = path_coords = route_error = simplified_segments = None
     from_candidates = to_candidates = []
 
     if from_q or from_id or to_q or to_id:
-        from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error = (
+        from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments = (
             _run_route(from_q, from_id, to_q, to_id)
         )
 
@@ -223,6 +227,7 @@ def home(request):
         "to_candidates": to_candidates,
         "path": path,
         "path_coords": path_coords,
+        "simplified_segments": simplified_segments,
         "route_error": route_error,
         "selected_floor": selected_floor,
         "selected_campus": selected_campus,
