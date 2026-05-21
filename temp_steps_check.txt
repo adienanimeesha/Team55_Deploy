@@ -1,0 +1,74 @@
+const IndoorSteps = () => {
+  // Node positions: x stays in a narrow left column so labels have room on the right.
+  // Nodes alternate between x=25 (west wall) and x=65 (east wall) to show corridor turns.
+  const nodes = [
+    { x: 25, y: 32,  label: "Enter through main doors", sub: "entry level" },
+    { x: 65, y: 110, label: "Take stairs on your left",  sub: "ground floor" },
+    { x: 25, y: 192, label: "2nd floor — turn right",   sub: "floor 2" },
+    { x: 65, y: 270, label: "Room N202 \xb7 3rd door",       sub: "destination ★" },
+  ];
+
+  // One continuous polyline — corridor bends show the actual turns you make:
+  //  Node1 → go down corridor → jog RIGHT (turn to face stairs) → Node2
+  //  Node2 → continue down stairs → jog LEFT (exit onto floor-2 corridor) → Node3
+  //  Node3 → go along floor-2 corridor → jog RIGHT (toward rooms) → Node4
+  const corridorPts = [
+    [25, 32],
+    [25, 72],  [65, 72],   // right jog: into ground-floor corridor toward stairs
+    [65, 110],
+    [65, 152], [25, 152],  // left jog: exit stairs onto floor-2 corridor
+    [25, 192],
+    [25, 232], [65, 232],  // right jog: turn toward rooms
+    [65, 270],
+  ].map(([x, y]) => x + "," + y).join(" ");
+
+  const R = 12; // node circle radius
+
+  return (
+    <div style={{ flex: 1, padding: "0 12px", overflow: "auto", minHeight: 0 }}>
+      <svg viewBox="0 0 230 302" style={{ width: "100%", overflow: "visible" }}>
+
+        {/* Single continuous path through all corridors — solid, no dashes */}
+        <polyline
+          points={corridorPts}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Floor-change label between nodes 2 and 3 */}
+        <text x="45" y="134" textAnchor="middle" fontSize="7" fill="var(--pencil)" fontStyle="italic">stairs up</text>
+
+        {/* Nodes */}
+        {nodes.map((n, i) => (
+          <g key={i}>
+            {/* white disc punches a hole in the line so the circle reads cleanly */}
+            <circle cx={n.x} cy={n.y} r={R + 2} fill="var(--paper)" />
+            {/* filled circle for step 1 (you are here), outlined for the rest */}
+            <circle
+              cx={n.x} cy={n.y} r={R}
+              fill={i === 0 ? "var(--accent)" : "var(--paper)"}
+              stroke="var(--accent)" strokeWidth="2"
+            />
+            <text
+              x={n.x} y={n.y + 4}
+              textAnchor="middle" fontSize="10" fontWeight="700"
+              fill={i === 0 ? "white" : "var(--accent)"}
+            >{i + 1}</text>
+
+            {/* step label to the right */}
+            <text x="90" y={n.y - 4}  fontSize="11" fontWeight="600" fill="var(--ink)">{n.label}</text>
+            <text x="90" y={n.y + 11} fontSize="9"              fill="var(--pencil)">{n.sub}</text>
+          </g>
+        ))}
+
+        {/* start / end cap labels on the path itself */}
+        <text x="8" y="28"  fontSize="7" fill="var(--pencil)" fontStyle="italic">start</text>
+        <text x="48" y="283" fontSize="7" fill="var(--accent)" fontWeight="600">here</text>
+      </svg>
+    </div>
+  );
+};
+

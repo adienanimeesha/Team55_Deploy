@@ -117,3 +117,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Serve floor-plan SVG files (data/floor_plans/*.svg) at /static/floor_plans/...
+STATICFILES_DIRS = [BASE_DIR / 'data']

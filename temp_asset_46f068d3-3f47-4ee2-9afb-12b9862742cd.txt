@@ -1,0 +1,215 @@
+/* global React, ReactDOM */
+/*
+  Prototype host — drives a single phone "frame" through a connected screen flow.
+  Each screen gets transition animations, hotspots are highlighted optionally,
+  and every tap is logged to a path that can be exported as JSON.
+*/
+
+const { useState, useEffect, useRef, useMemo, createContext, useContext } = React;
+
+// ---------- click-path tracking ----------
+const TrackerContext = createContext(null);
+
+function TrackerProvider({ children }) {
+  const [events, setEvents] = useState([]);
+  const startRef = useRef(Date.now());
+
+  const log = (kind, payload = {}) => {
+    setEvents((prev) => [...prev, {
+      t: Date.now() - startRef.current,
+      kind,
+      ...payload,
+    }]);
+  };
+
+  const reset = () => {
+    setEvents([]);
+    startRef.current = Date.now();
+  };
+
+  const exportJSON = () => {
+    const blob = new Blob(
+      [JSON.stringify({ session: new Date().toISOString(), events }, null, 2)],
+      { type: "application/json" }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `uq-map-test-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <TrackerContext.Provider value={{ events, log, reset, exportJSON }}>
+      {children}
+    </TrackerContext.Provider>
+  );
+}
+
+const useTracker = () => useContext(TrackerContext);
+
+// ---------- Hotspot — invisible-ish tap target with highlight option ----------
+function Hotspot({ children, onTap, label, hint, style, highlight = false, fill = false }) {
+  const tracker = useTracker();
+  const [pressed, setPressed] = useState(false);
+
+  const handle = (e) => {
+    e.stopPropagation();
+    setPressed(true);
+    setTimeout(() => setPressed(false), 200);
+    tracker.log("tap", { label });
+    onTap && onTap();
+  };
+
+  return (
+    <div
+      onClick={handle}
+      style={{
+        position: fill ? "absolute" : "relative",
+        inset: fill ? 0 : undefined,
+        cursor: "pointer",
+        borderRadius: 8,
+        outline: highlight ? "2px solid var(--accent)" : "none",
+        outlineOffset: 2,
+        boxShadow: highlight ? "0 0 0 6px oklch(0.92 0.04 305 / 0.6)" : "none",
+        animation: highlight ? "hotspotPulse 1.6s ease-in-out infinite" : "none",
+        background: pressed ? "oklch(0.92 0.04 305 / 0.4)" : "transparent",
+        transition: "background 0.15s",
+        ...style,
+      }}
+      data-hotspot={label}
+    >
+      {children}
+      {hint && highlight && (
+        <div style={{
+          position: "absolute", top: -10, right: -6,
+          fontSize: 9, padding: "2px 7px", borderRadius: 999,
+          background: "var(--accent)", color: "white", whiteSpace: "nowrap",
+          pointerEvents: "none", zIndex: 5,
+          boxShadow: "0 2px 5px rgba(0,0,0,0.18)",
+          letterSpacing: "0.03em",
+          fontWeight: 600,
+          textTransform: "uppercase",
+        }}>
+          {hint}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- Phone shell that hosts an animated screen stack ----------
+function PhoneStage({ screenId, children, transition = "slide" }) {
+  const [renderedId, setRenderedId] = useState(screenId);
+  const [renderedChild, setRenderedChild] = useState(children);
+  const [phase, setPhase] = useState("idle"); // idle | exiting | entering
+  const [direction, setDirection] = useState(1);
+
+  useEffect(() => {
+    if (screenId === renderedId) {
+      setRenderedChild(children);
+      return;
+    }
+    setPhase("exiting");
+    const t = setTimeout(() => {
+      setRenderedId(screenId);
+      setRenderedChild(children);
+      setPhase("entering");
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setPhase("idle"));
+      });
+    }, 220);
+    return () => clearTimeout(t);
+  }, [screenId, children]);
+
+  const animStyle = (() => {
+    if (transition === "fade") {
+      if (phase === "exiting") return { opacity: 0, transition: "opacity 0.22s" };
+      if (phase === "entering") return { opacity: 0, transform: "scale(0.98)" };
+      return { opacity: 1, transform: "scale(1)", transition: "opacity 0.3s, transform 0.3s" };
+    }
+    if (transition === "modal") {
+      if (phase === "exiting") return { opacity: 0, transform: "translateY(40px)", transition: "all 0.22s" };
+      if (phase === "entering") return { opacity: 0, transform: "translateY(40px)" };
+      return { opacity: 1, transform: "translateY(0)", transition: "all 0.32s cubic-bezier(0.2, 0.8, 0.2, 1)" };
+    }
+    // default: slide
+    if (phase === "exiting") return { transform: `translateX(${-30 * direction}px)`, opacity: 0, transition: "all 0.22s" };
+    if (phase === "entering") return { transform: `translateX(${30 * direction}px)`, opacity: 0 };
+    return { transform: "translateX(0)", opacity: 1, transition: "transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s" };
+  })();
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={animStyle}>
+        {renderedChild}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Variant switcher pill ----------
+function VariantSwitcher({ label, options, value, onChange }) {
+  return (
+    <div className="variant-switcher">
+      <span className="variant-switcher-label">{label}</span>
+      <div className="variant-switcher-pills">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            onClick={() => onChange(opt)}
+            className={"variant-pill " + (value === opt ? "active" : "")}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Bottom bar with reset / export / mode toggle ----------
+function PrototypeBar({ onReset, onExport, eventCount, modes, modeIndex, onModeChange, onShowVariants, showHints, onToggleHints }) {
+  return (
+    <div className="proto-bar">
+      <div className="proto-bar-section">
+        <button className="proto-bar-btn" onClick={onReset} title="Reset to start">↺ Reset</button>
+        <button className="proto-bar-btn" onClick={onExport} title="Export click path">
+          ↓ Export ({eventCount})
+        </button>
+        <button className={"proto-bar-btn" + (showHints ? " on" : "")} onClick={onToggleHints} title="Toggle hint highlights">
+          {showHints ? "● Hints on" : "○ Hints off"}
+        </button>
+      </div>
+
+      <div className="proto-bar-modes">
+        {modes.map((m, i) => (
+          <button
+            key={m}
+            className={"proto-bar-mode" + (i === modeIndex ? " active" : "")}
+            onClick={() => onModeChange(i)}
+          >
+            {String(i + 1).padStart(2, "0")} · {m}
+          </button>
+        ))}
+      </div>
+
+      <div className="proto-bar-section">
+        <button className="proto-bar-btn ghost" onClick={onShowVariants} title="Show all variants on a canvas">
+          ⊞ All variants
+        </button>
+      </div>
+    </div>
+  );
+}
+
+window.TrackerProvider = TrackerProvider;
+window.useTracker = useTracker;
+window.Hotspot = Hotspot;
+window.PhoneStage = PhoneStage;
+window.VariantSwitcher = VariantSwitcher;
+window.PrototypeBar = PrototypeBar;
+
+// Voice helper — read from window.VOICE (set by tweaks panel), fallback to literal
+window.V = (key, fallback) => (window.VOICE && window.VOICE[key]) || fallback;

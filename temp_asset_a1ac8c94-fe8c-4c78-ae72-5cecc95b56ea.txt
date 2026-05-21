@@ -1,0 +1,406 @@
+/* global React, Hotspot, useTracker */
+/*
+  Flow screens part 2 — slider, walking map, indoor, notification, arrived.
+  Each has 2-3 variants the user can switch between via the variant pill.
+*/
+
+const { useState: useState2, useEffect: useEffect2, useRef: useRef2 } = React;
+
+// Voice helper — read from window.VOICE (set by tweaks panel), fallback to literal
+const V = window.V;
+
+// ---------- shared route svg ----------
+function MiniRouteMap({ progress = 0, height = 180, showLabels = true }) {
+  // path approx: 40,160 → 100,120 → 180,80 → 260,40
+  const points = [[40, 160], [100, 120], [180, 80], [260, 40]];
+  const t = Math.max(0, Math.min(1, progress));
+  // interpolate along polyline
+  const segs = [];
+  let totalLen = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const dx = points[i+1][0] - points[i][0], dy = points[i+1][1] - points[i][1];
+    const len = Math.hypot(dx, dy);
+    segs.push({ from: points[i], to: points[i+1], len });
+    totalLen += len;
+  }
+  let target = t * totalLen;
+  let pos = points[0];
+  for (const s of segs) {
+    if (target <= s.len) {
+      const f = target / s.len;
+      pos = [s.from[0] + (s.to[0] - s.from[0]) * f, s.from[1] + (s.to[1] - s.from[1]) * f];
+      break;
+    }
+    target -= s.len;
+    pos = s.to;
+  }
+  return (
+    <svg viewBox="0 0 300 180" style={{ width: "100%", height, background: "var(--paper)", border: "1.5px dashed var(--pencil)", borderRadius: 8 }}>
+      {/* topo */}
+      {[0, 1, 2, 3, 4].map(i => (
+        <path key={i} d={`M0 ${30 + i*32} Q150 ${20 + i*32} 300 ${30 + i*32}`} stroke="var(--pencil-light)" strokeWidth="0.8" fill="none" opacity="0.4" />
+      ))}
+      {/* buildings */}
+      <rect x="20" y="140" width="40" height="30" fill="none" stroke="var(--pencil)" strokeWidth="1.2" />
+      <rect x="240" y="20" width="40" height="30" fill="none" stroke="var(--pencil)" strokeWidth="1.2" />
+      {/* path */}
+      <polyline points="40,160 100,120 180,80 260,40" stroke="var(--pencil)" strokeWidth="2.5" strokeDasharray="5 4" fill="none" />
+      <polyline points={`40,160 ${pos[0]},${pos[1]}`} stroke="var(--accent)" strokeWidth="3" fill="none" />
+      {/* you-dot */}
+      <circle cx={pos[0]} cy={pos[1]} r="8" fill="var(--accent)" stroke="white" strokeWidth="2" />
+      <circle cx={pos[0]} cy={pos[1]} r="14" fill="none" stroke="var(--accent)" strokeWidth="1" opacity="0.4" />
+      {/* labels */}
+      {showLabels && (<>
+        <text x="40" y="178" fontSize="9" fill="var(--pencil)">50-N202</text>
+        <text x="220" y="14" fontSize="9" fill="var(--accent)" fontWeight="600">★ 78-217</text>
+      </>)}
+    </svg>
+  );
+}
+
+// ============================================================
+// NOTIFICATION SET (confirmation after Plan)
+// ============================================================
+const FlowNotifSet = ({ go, showHints }) => (
+  <div className="phone">
+    <div className="phone-inner">
+      <div className="statusbar"><span>10:42</span><span>••• 􀟝􀛨</span></div>
+      <div className="bb-chrome">
+        <span className="bb-tag">≡ Blackboard</span>
+        <span style={{ flex: 1 }}>Reminder set</span>
+        <Hotspot label="notif-set:close" onTap={() => go("timetable")}>
+          <span style={{ pointerEvents: "none" }}>×</span>
+        </Hotspot>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "30px 18px", gap: 16, alignItems: "center" }}>
+        <div style={{ width: 84, height: 84, borderRadius: 42, background: "var(--accent)", display: "grid", placeItems: "center", animation: "popIn 0.4s cubic-bezier(0.2, 1.4, 0.6, 1)", color: "white", fontSize: 40 }}>🔔</div>
+        <div style={{ fontSize: 26, fontWeight: 700, textAlign: "center", lineHeight: 1.1 }}>{V("reminderHeadline", "You're all set.")}</div>
+        <div style={{ fontSize: 13, color: "var(--pencil)", textAlign: "center", maxWidth: 240 }}>
+          {V("reminderSub", "We'll ping you when it's time to leave for STAT2003.")}
+        </div>
+        <div className="box" style={{ width: "100%", padding: 12, marginTop: 6 }}>
+          <div className="label">reminder</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 4 }}>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>10:54</div>
+            <div className="pill ok" style={{ fontSize: 11 }}>arrive 11:00</div>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--pencil)", marginTop: 4 }}>
+            6 min walk to 50-N202 · class starts 11:00
+          </div>
+        </div>
+        <div className="box dashed soft" style={{ width: "100%", padding: 10, fontSize: 11, color: "var(--pencil)" }}>
+          You can dismiss the reminder or tap it to start navigating.
+        </div>
+        <div style={{ flex: 1 }} />
+        <Hotspot label="notif-set:see-preview" onTap={() => go("notification")} highlight={showHints} hint="preview the alert" style={{ width: "100%" }}>
+          <button className="btn primary" style={{ width: "100%", pointerEvents: "none" }}>{V("previewCta", "Preview the notification →")}</button>
+        </Hotspot>
+        <Hotspot label="notif-set:back" onTap={() => go("timetable")} style={{ width: "100%" }}>
+          <button className="btn ghost" style={{ width: "100%", pointerEvents: "none" }}>{V("backToSchedule", "Back to schedule")}</button>
+        </Hotspot>
+      </div>
+    </div>
+  </div>
+);
+
+window.FlowNotifSet = FlowNotifSet;
+
+// ============================================================
+// 03 · PRE-DEPARTURE SLIDER (continued)
+// ============================================================
+
+// Slider value 0..1 maps to "minutes from now until departure" from 0 → 30
+// "Now" is 10:42 (matches status bar). Class at 11:00 (start), 6 min walk.
+// slider=0 → leave now (10:42) → arrive 10:48 → 12 min early ✓
+// slider=1 → leave in 30 min (11:12) → arrive 11:18 → 18 min late ✗
+function useEta(slider) {
+  const minutesFromNow = Math.round(slider * 30); // 0 → 30
+  const NOW_MIN = 42; // 10:42 from status bar
+  const departMin = NOW_MIN + minutesFromNow; // minutes past 10:00
+  const arriveMin = departMin + 6;
+  const buffer = 60 - arriveMin; // positive = on time
+  const onTime = buffer >= 0;
+  const lateMin = Math.max(0, -buffer);
+  const fmt = (m) => {
+    const h = 10 + Math.floor(m / 60);
+    const mm = Math.floor(m % 60);
+    return `${h}:${String(mm).padStart(2, "0")}`;
+  };
+  return {
+    departStr: fmt(departMin),
+    arriveStr: fmt(arriveMin),
+    onTime,
+    lateMin,
+    bufferMin: Math.max(0, buffer),
+    minutesFromNow,
+  };
+}
+
+const SliderH = ({ value, onChange, showHints }) => {
+  // Horizontal slider variant
+  const eta = useEta(value);
+  const trackRef = useRef2(null);
+  const [drag, setDrag] = useState2(false);
+
+  const onPointer = (clientX) => {
+    if (!trackRef.current) return;
+    const r = trackRef.current.getBoundingClientRect();
+    onChange(Math.max(0, Math.min(1, (clientX - r.left) / r.width)));
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 14px", flex: 1 }}>
+      <MiniRouteMap progress={0} height={150} />
+      <div className="box" style={{ padding: 12, borderColor: eta.onTime ? "var(--ok)" : "var(--warn)" }}>
+        <div className="label">if you leave at...</div>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 4 }}>
+          <div style={{ fontSize: 32, fontWeight: 700 }}>{eta.departStr}</div>
+          <div className={"pill " + (eta.onTime ? "ok" : "warn")} style={{ fontSize: 13 }}>
+            arrive {eta.arriveStr}
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: "var(--pencil)", marginTop: 4 }}>
+          class starts 11:00 · {eta.onTime ? `${(60 - (Math.floor(eta.departStr.split(":")[1]) + 6)).toFixed(0)} min buffer` : `${eta.lateMin.toFixed(0)} min late`}
+        </div>
+      </div>
+      <div style={{ flex: 1 }} />
+      <div
+        ref={trackRef}
+        onMouseDown={(e) => { setDrag(true); onPointer(e.clientX); }}
+        onMouseMove={(e) => { if (drag) onPointer(e.clientX); }}
+        onMouseUp={() => setDrag(false)}
+        onMouseLeave={() => setDrag(false)}
+        onTouchStart={(e) => onPointer(e.touches[0].clientX)}
+        onTouchMove={(e) => onPointer(e.touches[0].clientX)}
+        style={{ position: "relative", height: 44, padding: "16px 0", cursor: "pointer", touchAction: "none" }}
+      >
+        <div className="slider-track" style={{ position: "absolute", left: 0, right: 0, top: "50%", transform: "translateY(-50%)" }} />
+        <div className="slider-thumb" style={{ position: "absolute", left: `${value * 100}%`, top: "50%", transform: "translate(-50%, -50%)", outline: showHints ? "3px solid oklch(0.85 0.06 305)" : "none", outlineOffset: 4 }} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--pencil)", marginTop: -4 }}>
+        <span>10:54</span><span>10:57</span><span>11:00</span><span>11:04</span>
+      </div>
+    </div>
+  );
+};
+
+const SliderD = ({ value, onChange, showHints }) => {
+  // Dial: 30 min before class (top, slider=0) → 0 min before (right side, slider=1)
+  // Map slider value (0..1) to angle on a 270° arc starting at -225° (top-left) ending at 45° (right)
+  // Use a clean clock-like layout: 0 min at right (3 o'clock), 30 min at top (12 o'clock)
+  // We'll go: slider=0 → -225° (top-left), slider=1 → 45° (bottom-right)... actually clean it up.
+  // Simpler: arc from -135° (lower-left) clockwise through top to +135° (lower-right). 0 → 1.
+  const eta = useEta(value);
+  const startDeg = -225; // visual start (lower-left)
+  const sweep = 270;     // total arc
+  const angle = startDeg + value * sweep; // -225 → 45
+  const cx = 110, cy = 110, r = 78;
+  const rad = (deg) => (deg * Math.PI) / 180;
+  const tipX = cx + r * Math.cos(rad(angle));
+  const tipY = cy + r * Math.sin(rad(angle));
+  const dialRef = useRef2(null);
+  const [drag, setDrag] = useState2(false);
+
+  const onPointer = (e) => {
+    if (!dialRef.current) return;
+    const rect = dialRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    let a = (Math.atan2(y, x) * 180) / Math.PI; // -180..180
+    // normalize so a is in [-225, 45] arc range:
+    // valid arc spans from -225° (=135°) clockwise to 45°
+    // map atan2 result into that domain
+    // atan2 range: -180..180. We want to treat <-180 wrap-around.
+    // Convert any angle to [-225, 135] domain via shift:
+    if (a > 45 && a <= 135) {
+      // dead zone (top of arc gap, lower part missing) — clamp to nearest end
+      // closer to 45 → snap to 45 (slider=1), closer to 135 (=-225) → snap to 0
+      a = a < 90 ? 45 : -225;
+    } else if (a > 135) {
+      a = a - 360; // make it negative (e.g. 170 → -190)
+    }
+    // now a should be in [-225, 45]
+    const t = (a - startDeg) / sweep;
+    onChange(Math.max(0, Math.min(1, t)));
+  };
+
+  // tick marks every 5 minutes (so 0, 5, 10, 15, 20, 25, 30 min before class)
+  // Layout: "now" at lower-left (slider=0), "30m" at lower-right (slider=1)
+  const ticks = [0, 5, 10, 15, 20, 25, 30].map(m => {
+    const v = m / 30; // m=0 → slider=0 → lower-left (now); m=30 → slider=1 → lower-right
+    const a = startDeg + v * sweep;
+    const major = m % 10 === 0;
+    const inner = major ? r - 14 : r - 8;
+    const outer = r - 2;
+    return { m, a, major, inner, outer, label: m === 0 ? "now" : `${m}m` };
+  });
+
+  // active arc length
+  const arcLen = (value * sweep * Math.PI * r) / 180;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 14px", flex: 1, alignItems: "center" }}>
+      <MiniRouteMap progress={0} height={130} />
+      <div
+        ref={dialRef}
+        onMouseDown={(e) => { setDrag(true); onPointer(e); }}
+        onMouseMove={(e) => { if (drag) onPointer(e); }}
+        onMouseUp={() => setDrag(false)}
+        onMouseLeave={() => setDrag(false)}
+        onTouchStart={(e) => { setDrag(true); const t = e.touches[0]; onPointer({ clientX: t.clientX, clientY: t.clientY }); }}
+        onTouchMove={(e) => { if (drag) { const t = e.touches[0]; onPointer({ clientX: t.clientX, clientY: t.clientY }); } }}
+        onTouchEnd={() => setDrag(false)}
+        style={{ width: 220, height: 220, position: "relative", cursor: "pointer", touchAction: "none", userSelect: "none" }}
+      >
+        <svg viewBox="0 0 220 220" style={{ width: "100%", height: "100%" }}>
+          {/* base track ring */}
+          <path
+            d={`M ${cx + r * Math.cos(rad(startDeg))} ${cy + r * Math.sin(rad(startDeg))}
+                A ${r} ${r} 0 1 1 ${cx + r * Math.cos(rad(startDeg + sweep))} ${cy + r * Math.sin(rad(startDeg + sweep))}`}
+            fill="none" stroke="var(--pencil-light)" strokeWidth="3" strokeLinecap="round" />
+          {/* active arc */}
+          <path
+            d={`M ${cx + r * Math.cos(rad(startDeg))} ${cy + r * Math.sin(rad(startDeg))}
+                A ${r} ${r} 0 1 1 ${cx + r * Math.cos(rad(startDeg + sweep))} ${cy + r * Math.sin(rad(startDeg + sweep))}`}
+            fill="none"
+            stroke={eta.onTime ? "var(--ok)" : "var(--warn)"}
+            strokeWidth="6" strokeLinecap="round"
+            strokeDasharray={`${arcLen} 1000`}
+          />
+          {/* tick marks + labels */}
+          {ticks.map((t, i) => {
+            const x1 = cx + t.inner * Math.cos(rad(t.a));
+            const y1 = cy + t.inner * Math.sin(rad(t.a));
+            const x2 = cx + t.outer * Math.cos(rad(t.a));
+            const y2 = cy + t.outer * Math.sin(rad(t.a));
+            const lx = cx + (r + 14) * Math.cos(rad(t.a));
+            const ly = cy + (r + 14) * Math.sin(rad(t.a));
+            return (
+              <g key={i}>
+                <line x1={x1} y1={y1} x2={x2} y2={y2}
+                  stroke="var(--ink-soft)" strokeWidth={t.major ? 2 : 1} strokeLinecap="round" />
+                {t.major && (
+                  <text x={lx} y={ly + 3} textAnchor="middle" fontSize="9" fill="var(--pencil)">
+                    {t.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+          {/* needle */}
+          <line x1={cx} y1={cy} x2={tipX} y2={tipY}
+            stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" />
+          <circle cx={tipX} cy={tipY} r="11" fill="var(--accent)" stroke="white" strokeWidth="2.5"
+            style={{ filter: showHints ? "drop-shadow(0 0 6px oklch(0.85 0.06 305))" : "none" }} />
+          <circle cx={cx} cy={cy} r="3" fill="var(--ink)" />
+          {/* center labels */}
+          <text x={cx} y={cy - 14} textAnchor="middle" fontSize="9" fill="var(--pencil)">depart at</text>
+          <text x={cx} y={cy + 14} textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--ink)">{eta.departStr}</text>
+          <text x={cx} y={cy + 30} textAnchor="middle" fontSize="10" fill="var(--pencil)">
+            {eta.minutesFromNow === 0 ? "right now" : `in ${eta.minutesFromNow} min`}
+          </text>
+        </svg>
+      </div>
+      <div className="box" style={{ width: "100%", padding: 10, borderColor: eta.onTime ? "var(--ok)" : "var(--warn)", display: "flex", gap: 12, alignItems: "center" }}>
+        <div style={{ flex: 1 }}>
+          <div className="label">arrive at</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: eta.onTime ? "var(--ok)" : "var(--warn)", lineHeight: 1 }}>{eta.arriveStr}</div>
+          <div style={{ fontSize: 11, color: "var(--pencil)", marginTop: 4 }}>
+            {eta.onTime ? `${eta.bufferMin} min buffer · on time` : `${eta.lateMin} min late`}
+          </div>
+        </div>
+        <div className={"pill " + (eta.onTime ? "ok" : "warn")} style={{ fontSize: 13, padding: "6px 12px" }}>
+          {eta.onTime ? "✓ on time" : "⚠ late"}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SliderBinary = ({ value, onChange, showHints }) => {
+  // YES/NO + dual readout
+  const eta = useEta(value);
+  const trackRef = useRef2(null);
+  const [drag, setDrag] = useState2(false);
+  const onPointer = (clientX) => {
+    if (!trackRef.current) return;
+    const r = trackRef.current.getBoundingClientRect();
+    onChange(Math.max(0, Math.min(1, (clientX - r.left) / r.width)));
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 14px", flex: 1 }}>
+      <div style={{ background: eta.onTime ? "oklch(0.92 0.08 155)" : "oklch(0.92 0.08 35)", borderRadius: 12, padding: 18, textAlign: "center", border: `2px solid ${eta.onTime ? "var(--ok)" : "var(--warn)"}` }}>
+        <div style={{ fontSize: 13, color: "var(--pencil)", marginBottom: 4 }}>can I make it?</div>
+        <div style={{ fontSize: 48, fontWeight: 800, color: eta.onTime ? "var(--ok)" : "var(--warn)", lineHeight: 1 }}>
+          {eta.onTime ? "YES" : "NO"}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <div className="box" style={{ flex: 1, padding: 10, textAlign: "center" }}>
+          <div className="label">leave</div>
+          <div style={{ fontSize: 24, fontWeight: 700 }}>{eta.departStr}</div>
+        </div>
+        <div className="box" style={{ flex: 1, padding: 10, textAlign: "center", borderColor: eta.onTime ? "var(--ok)" : "var(--warn)" }}>
+          <div className="label">arrive</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: eta.onTime ? "var(--ok)" : "var(--warn)" }}>{eta.arriveStr}</div>
+        </div>
+      </div>
+      <MiniRouteMap progress={0} height={120} />
+      <div style={{ flex: 1 }} />
+      <div
+        ref={trackRef}
+        onMouseDown={(e) => { setDrag(true); onPointer(e.clientX); }}
+        onMouseMove={(e) => { if (drag) onPointer(e.clientX); }}
+        onMouseUp={() => setDrag(false)}
+        onMouseLeave={() => setDrag(false)}
+        onTouchStart={(e) => onPointer(e.touches[0].clientX)}
+        onTouchMove={(e) => onPointer(e.touches[0].clientX)}
+        style={{ position: "relative", height: 44, padding: "16px 0", cursor: "pointer", touchAction: "none" }}
+      >
+        <div className="slider-track" style={{ position: "absolute", left: 0, right: 0, top: "50%", transform: "translateY(-50%)" }} />
+        <div className="slider-thumb" style={{ position: "absolute", left: `${value * 100}%`, top: "50%", transform: "translate(-50%, -50%)" }} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--pencil)" }}>
+        <span>10:54</span><span>11:00</span><span>11:04</span>
+      </div>
+    </div>
+  );
+};
+
+const FlowSliderScreen = ({ go, showHints }) => {
+  const [value, setValue] = useState2(0.2);
+  return (
+    <div className="phone">
+      <div className="phone-inner">
+        <div className="statusbar"><span>10:42</span><span>••• 􀟝􀛨</span></div>
+        <div className="bb-chrome">
+          <span className="bb-tag">≡ Blackboard</span>
+          <span style={{ flex: 1 }}>STAT2003 · 11:00</span>
+          <Hotspot label="slider:close" onTap={() => go("timetable")}>
+            <span style={{ pointerEvents: "none" }}>×</span>
+          </Hotspot>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, paddingTop: 10, gap: 10, overflow: "hidden" }}>
+          <div style={{ padding: "0 14px" }}>
+            <div className="label">when should I leave?</div>
+            <div style={{ fontSize: 16, marginTop: 2 }}>Drag the dial to see when you'd arrive</div>
+          </div>
+
+          <SliderD value={value} onChange={setValue} showHints={showHints} />
+
+          <div style={{ padding: "0 14px 14px", display: "flex", gap: 8, flexDirection: "column" }}>
+            <Hotspot label="slider:set-notification" onTap={() => go("notif-set")} highlight={showHints} hint="set reminder" style={{ flex: 1 }}>
+              <button className="btn primary" style={{ width: "100%", pointerEvents: "none" }}>{V("planCta", "🔔 Set notification")}</button>
+            </Hotspot>
+            <Hotspot label="slider:walk-now" onTap={() => go("map")} style={{ flex: 1 }}>
+              <button className="btn ghost" style={{ width: "100%", pointerEvents: "none" }}>{V("planAlt", "I'm leaving now")}</button>
+            </Hotspot>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+window.FlowSliderScreen = FlowSliderScreen;
+window.MiniRouteMap = MiniRouteMap;

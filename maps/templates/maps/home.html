@@ -1590,6 +1590,12 @@
             <div class="map-canvas">
                 <svg class="campus-svg" viewBox="0 0 1366 880" preserveAspectRatio="xMidYMid slice"
                      xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        {# clip paths keep each floor-plan image inside its building rect #}
+                        <clipPath id="clip-b62"><rect x="0" y="0" width="560" height="260" rx="4"/></clipPath>
+                        <clipPath id="clip-b63"><rect x="0" y="0" width="420" height="270" rx="4"/></clipPath>
+                        <clipPath id="clip-b69"><rect x="0" y="0" width="370" height="380" rx="4"/></clipPath>
+                    </defs>
 
                     {# ── green spaces ── #}
                     <ellipse cx="1100" cy="110" rx="130" ry="90" fill="#b6ddb0" opacity="0.85"/>
@@ -1629,30 +1635,24 @@
 
                     {# ═══ BUILDING 62 — John Hines ═══
                          Rect 560×260, rotated 16° around its centre.
-                         A nested svg maps 0–100 coords → 560×260 px,
-                         so room x/y/w/h percentages align automatically.
+                         Real floor-plan SVG image, clipped to building footprint.
                     ═══════════════════════════════════════════════ #}
                     <g transform="translate(100,158) rotate(16,280,130)">
-                        {# always-visible shadow rect #}
+                        {# faint outline — visible only when no image is loaded #}
                         <rect x="0" y="0" width="560" height="260" rx="4"
-                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
-                              opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
+                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2" opacity="0.18"/>
                         {% for item in map_floors %}{% if item.building.number == "62" %}
-                        {# floor plan embedded in a nested SVG with matching viewBox #}
+                        {# actual UQ floor-plan SVG, multiply-blended so white→transparent #}
+                        <image href="/static/floor_plans/0062-{{ item.floor.level }}.svg"
+                               x="0" y="0" width="560" height="260"
+                               preserveAspectRatio="xMidYMid slice"
+                               clip-path="url(#clip-b62)"
+                               style="mix-blend-mode:multiply; opacity:0.88;"/>
+                        {# transparent overlay — JS appends route waypoints here via id #}
                         <svg id="fp-svg-b{{ item.building.number }}_f{{ item.floor.level }}"
                              x="0" y="0" width="560" height="260"
-                             viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
-                            {% for c in item.floor.corridors %}
-                            <rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" class="svg-fp-corridor"/>
-                            {% endfor %}
-                            {% for room in item.floor.rooms %}{% with t=room.type|lower %}
-                            <rect x="{{ room.x }}" y="{{ room.y }}" width="{{ room.w }}" height="{{ room.h }}"
-                                  class="svg-room{% if 'teaching' in t or 'lecture' in t or 'theatre' in t %} svgr-teaching{% elif 'lab' in t or 'computer' in t %} svgr-lab{% elif 'office' in t %} svgr-office{% elif 'meeting' in t %} svgr-meeting{% elif 'study' in t %} svgr-study{% elif 'stair' in t %} svgr-stairs{% elif 'lift' in t or 'elevator' in t %} svgr-lift{% elif 'toilet' in t or 'wc' in t or 'accessible' in t or 'bathroom' in t %} svgr-toilet{% elif 'kitchen' in t or 'food' in t or 'beverage' in t %} svgr-kitchen{% elif 'corridor' in t %} svgr-corridor{% elif 'storage' in t or 'bicycle' in t %} svgr-storage{% endif %}"/>
-                            {% endwith %}{% endfor %}
-                            {% for wall in item.floor.walls %}
-                            <line x1="{{ wall.x1 }}" y1="{{ wall.y1 }}" x2="{{ wall.x2 }}" y2="{{ wall.y2 }}" class="svg-fp-wall"/>
-                            {% endfor %}
+                             viewBox="0 0 100 100" preserveAspectRatio="none"
+                             fill="none" overflow="visible">
                         </svg>
                         {% endif %}{% endfor %}
                         <text x="280" y="-8" text-anchor="middle" font-size="13" font-weight="800"
@@ -1664,26 +1664,21 @@
 
                     {# ═══ BUILDING 63 — Physiology Lecture Theatres ═══
                          Rect 420×270, rotated 14° around its centre.
+                         Real floor-plan SVG image, clipped to building footprint.
                     ═══════════════════════════════════════════════ #}
-                    <g transform="translate(72,476) rotate(14,210,135)">
+                    <g transform="translate(30,389) rotate(16,210,135)">
                         <rect x="0" y="0" width="420" height="270" rx="4"
-                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
-                              opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
+                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2" opacity="0.18"/>
                         {% for item in map_floors %}{% if item.building.number == "63" %}
+                        <image href="/static/floor_plans/0063-{{ item.floor.level }}.svg"
+                               x="0" y="0" width="420" height="270"
+                               preserveAspectRatio="xMidYMid slice"
+                               clip-path="url(#clip-b63)"
+                               style="mix-blend-mode:multiply; opacity:0.88;"/>
                         <svg id="fp-svg-b{{ item.building.number }}_f{{ item.floor.level }}"
                              x="0" y="0" width="420" height="270"
-                             viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
-                            {% for c in item.floor.corridors %}
-                            <rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" class="svg-fp-corridor"/>
-                            {% endfor %}
-                            {% for room in item.floor.rooms %}{% with t=room.type|lower %}
-                            <rect x="{{ room.x }}" y="{{ room.y }}" width="{{ room.w }}" height="{{ room.h }}"
-                                  class="svg-room{% if 'teaching' in t or 'lecture' in t or 'theatre' in t %} svgr-teaching{% elif 'lab' in t or 'computer' in t %} svgr-lab{% elif 'office' in t %} svgr-office{% elif 'meeting' in t %} svgr-meeting{% elif 'study' in t %} svgr-study{% elif 'stair' in t %} svgr-stairs{% elif 'lift' in t or 'elevator' in t %} svgr-lift{% elif 'toilet' in t or 'wc' in t or 'accessible' in t or 'bathroom' in t %} svgr-toilet{% elif 'kitchen' in t or 'food' in t or 'beverage' in t %} svgr-kitchen{% elif 'corridor' in t %} svgr-corridor{% elif 'storage' in t or 'bicycle' in t %} svgr-storage{% endif %}"/>
-                            {% endwith %}{% endfor %}
-                            {% for wall in item.floor.walls %}
-                            <line x1="{{ wall.x1 }}" y1="{{ wall.y1 }}" x2="{{ wall.x2 }}" y2="{{ wall.y2 }}" class="svg-fp-wall"/>
-                            {% endfor %}
+                             viewBox="0 0 100 100" preserveAspectRatio="none"
+                             fill="none" overflow="visible">
                         </svg>
                         {% endif %}{% endfor %}
                         <text x="210" y="-8" text-anchor="middle" font-size="12" font-weight="800"
@@ -1695,26 +1690,21 @@
 
                     {# ═══ BUILDING 69 ═══
                          Rect 370×380, rotated 14° around its centre.
+                         Real floor-plan SVG image, clipped to building footprint.
                     ═══════════════════════════════════════════════ #}
-                    <g transform="translate(730,260) rotate(14,185,190)">
+                    <g transform="translate(654,279) rotate(14,185,190)">
                         <rect x="0" y="0" width="370" height="380" rx="4"
-                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
-                              opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
+                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2" opacity="0.18"/>
                         {% for item in map_floors %}{% if item.building.number == "69" %}
+                        <image href="/static/floor_plans/0069-{{ item.floor.level }}.svg"
+                               x="0" y="0" width="370" height="380"
+                               preserveAspectRatio="xMidYMid slice"
+                               clip-path="url(#clip-b69)"
+                               style="mix-blend-mode:multiply; opacity:0.88;"/>
                         <svg id="fp-svg-b{{ item.building.number }}_f{{ item.floor.level }}"
                              x="0" y="0" width="370" height="380"
-                             viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
-                            {% for c in item.floor.corridors %}
-                            <rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" class="svg-fp-corridor"/>
-                            {% endfor %}
-                            {% for room in item.floor.rooms %}{% with t=room.type|lower %}
-                            <rect x="{{ room.x }}" y="{{ room.y }}" width="{{ room.w }}" height="{{ room.h }}"
-                                  class="svg-room{% if 'teaching' in t or 'lecture' in t or 'theatre' in t %} svgr-teaching{% elif 'lab' in t or 'computer' in t %} svgr-lab{% elif 'office' in t %} svgr-office{% elif 'meeting' in t %} svgr-meeting{% elif 'study' in t %} svgr-study{% elif 'stair' in t %} svgr-stairs{% elif 'lift' in t or 'elevator' in t %} svgr-lift{% elif 'toilet' in t or 'wc' in t or 'accessible' in t or 'bathroom' in t %} svgr-toilet{% elif 'kitchen' in t or 'food' in t or 'beverage' in t %} svgr-kitchen{% elif 'corridor' in t %} svgr-corridor{% elif 'storage' in t or 'bicycle' in t %} svgr-storage{% endif %}"/>
-                            {% endwith %}{% endfor %}
-                            {% for wall in item.floor.walls %}
-                            <line x1="{{ wall.x1 }}" y1="{{ wall.y1 }}" x2="{{ wall.x2 }}" y2="{{ wall.y2 }}" class="svg-fp-wall"/>
-                            {% endfor %}
+                             viewBox="0 0 100 100" preserveAspectRatio="none"
+                             fill="none" overflow="visible">
                         </svg>
                         {% endif %}{% endfor %}
                         <text x="185" y="-8" text-anchor="middle" font-size="13" font-weight="800"
@@ -1952,7 +1942,6 @@
                 fill: 'none',
                 stroke: '#6B21A8',
                 'stroke-width': '3.5',
-                'stroke-dasharray': '7 4',
                 'stroke-linecap': 'round',
                 'stroke-linejoin': 'round',
                 opacity: '0.88',

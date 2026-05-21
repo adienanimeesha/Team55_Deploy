@@ -1,0 +1,14 @@
+statusbar_span2:
+<span>••• 􀟝􀛨</span>
+
+chrome_tag:
+<span className="bb-tag">≡ Blackboard</span>
+
+header_span:
+<span style={{ flex: 1 }}>→ STAT2003 · 50-N202</span>
+
+cancel_hotspot:
+<Hotspot label="map:cancel" onTap={() => go("timetable")}>
+            <span style={{ pointerEvents: "none" }}>×</span>
+          </Hotspot>
+
