@@ -458,12 +458,12 @@ BUILDING_63 = {
         ]),
 
         make_floor_63("2A", "Level 2A", [
-            make_room_63("251", "Room 251", "Large Room", "46.2 m²", 18, 29, 14, 14, "on the left side of Level 2A"),
-            make_room_63("252", "Room 252", "Small Room", "7.1 m²", 17, 45, 7, 7, "beside Room 251"),
+            make_room_63("251", "Room 251", "Large Room", "46.2 m²", 7, 52, 11, 18, "on the left side of Level 2A"),
+            make_room_63("252", "Room 252", "Small Room", "7.1 m²", 7, 70, 5, 10, "beside Room 251"),
         ], labels=[
-            {"text": "lecture seating", "x": 44, "y": 39},
-            {"text": "upper walkway", "x": 68, "y": 43},
-            {"text": "stairs", "x": 12, "y": 49},
+            {"text": "lecture seating", "x": 37, "y": 61},
+            {"text": "upper walkway", "x": 55, "y": 59},
+            {"text": "stairs", "x": 11, "y": 86},
         ]),
 
         make_floor_63("3", "Level 3", [
