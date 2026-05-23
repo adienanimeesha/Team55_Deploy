@@ -105,8 +105,18 @@ def _resolve_node(query, node_id):
 
 def _floor_room_matches(floor, query):
     matches = []
+    room_code_query = _room_code_from_text(query)
     for room in floor["rooms"]:
-        if query in room["code"].lower() or query in room["name"].lower() or query in room["type"].lower():
+        room_code = room["code"].lower()
+        room_name = room["name"].lower()
+        room_type = room["type"].lower()
+
+        if room_code_query:
+            is_match = room_code == room_code_query
+        else:
+            is_match = query in room_name or query in room_type
+
+        if is_match:
             room_copy = room.copy()
             room_copy["floor_level"] = floor["level"]
             room_copy["floor_label"] = floor["label"]
@@ -115,12 +125,20 @@ def _floor_room_matches(floor, query):
 
 
 def _building_results(query):
+    exact_building_number = _building_number(query) if query else ""
+    if exact_building_number and any(building["number"] == exact_building_number for building in BUILDINGS):
+        return [
+            {"building": building, "matching_rooms": []}
+            for building in BUILDINGS
+            if building["number"] == exact_building_number
+        ]
+
     results = []
     for building in BUILDINGS:
         building_matches = (
             not query
             or query in building["name"].lower()
-            or query in building["number"].lower()
+            or query == building["number"].lower()
             or query in building["campus"].lower()
         )
         matching_rooms = []

@@ -15,17 +15,52 @@
 
     <main class="main" id="main-layout">
 
-        {# ── sidebar collapse/expand toggle ── #}
-        <button class="sidebar-toggle" id="sidebar-toggle"
-                aria-label="Toggle sidebar" title="Toggle sidebar">
-            <span class="toggle-arrow">&#8249;</span>
-        </button>
+        <aside class="map-overlay-panel" id="map-search-panel">
+            <section class="floating-search-panel" id="quick-search-panel">
+                <form method="get" class="map-search-form">
+                    {% if from_q %}<input type="hidden" name="from" value="{{ from_q }}">{% endif %}
+                    {% if to_q %}<input type="hidden" name="to" value="{{ to_q }}">{% endif %}
+                    {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
+                    {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
+                    <span class="search-leading-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M12 21s7-6.2 7-12A7 7 0 0 0 5 9c0 5.8 7 12 7 12Z"/>
+                            <circle cx="12" cy="9" r="2.4"/>
+                        </svg>
+                    </span>
+                    <label for="map-search-input" class="sr-only">Search rooms, buildings, stairs, lifts</label>
+                    <input id="map-search-input" type="text" name="q"
+                           placeholder="Search rooms, buildings, stairs, lifts..."
+                           value="{{ query }}">
+                    <button type="submit" class="icon-btn search-submit" aria-label="Search" title="Search">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <circle cx="11" cy="11" r="6.5"/>
+                            <path d="M16 16l5 5"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="icon-btn route-mode-btn" id="show-route-panel"
+                            aria-label="Plan route" title="Plan route">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M4 18V7.5A2.5 2.5 0 0 1 6.5 5H17"/>
+                            <path d="M14 2l4 3-4 3"/>
+                            <path d="M8 22l8-8"/>
+                            <path d="M15 14h5v5"/>
+                        </svg>
+                    </button>
+                </form>
+            </section>
 
-        <aside class="sidebar" id="sidebar">
-            <section class="panel">
-                <div class="panel-title">Plan a route</div>
-                <p class="hint">Search any rooms, stairs, lifts, or buildings.</p>
+            <section class="floating-route-panel{% if from_q or to_q or from_node or to_node or route_error or path %} is-open{% endif %}" id="route-panel">
                 <form method="get" class="route-form" id="route-form">
+                    <div class="route-panel-top">
+                        <button type="button" class="back-icon-btn" id="hide-route-panel"
+                                aria-label="Back to search" title="Back to search">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M15 5l-7 7 7 7"/>
+                            </svg>
+                        </button>
+                        <div class="route-panel-title">Directions</div>
+                    </div>
                     <input type="hidden" name="from_id" id="from-id-input" value="{{ from_id }}">
                     <input type="hidden" name="to_id" id="to-id-input" value="{{ to_id }}">
                     {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
@@ -34,7 +69,7 @@
                         <label class="input-row{% if from_node %} confirmed-row{% endif %}" id="from-row" aria-label="Starting location">
                             <span class="dot"></span>
                             <input type="text" name="from" id="from-input"
-                                   placeholder="From, e.g. 101 or Building 62"
+                                   placeholder="Starting point"
                                    value="{% if from_node %}{{ from_node.label }}{% else %}{{ from_q }}{% endif %}"
                                    autocomplete="off">
                         </label>
@@ -71,7 +106,7 @@
                         <label class="input-row{% if to_node %} confirmed-row{% endif %}" id="to-row" aria-label="Destination">
                             <span class="dot to"></span>
                             <input type="text" name="to" id="to-input"
-                                   placeholder="To, e.g. 212 or stairs"
+                                   placeholder="Destination"
                                    value="{% if to_node %}{{ to_node.label }}{% else %}{{ to_q }}{% endif %}"
                                    autocomplete="off">
                         </label>
@@ -104,6 +139,11 @@
                         {% endif %}
                     </div>
 
+                    <label class="route-option">
+                        <input type="checkbox" name="avoid_stairs" value="1">
+                        <span>Avoid stairs</span>
+                    </label>
+
                     <button type="submit" class="btn">Get directions</button>
 
                     {% if route_error %}
@@ -114,7 +154,7 @@
 
             {% if path %}
             {% with path|last as last_node %}
-            <section class="panel">
+            <section class="panel route-results-panel">
                 {% if simplified_segments %}
                     <div class="route-summary">{{ simplified_segments|length }} step{{ simplified_segments|length|pluralize }} · {{ path.0.label }} → {{ last_node.label }}</div>
                     <div class="simplified-directions">
@@ -149,20 +189,10 @@
             {% endwith %}
             {% endif %}
 
-            <section class="panel">
-                <div class="panel-title">Buildings</div>
-                <p class="hint">The overview is focused on the buildings loaded by the project data folder.</p>
-
-                <form method="get" class="search-row">
-                    {% if from_q %}<input type="hidden" name="from" value="{{ from_q }}">{% endif %}
-                    {% if to_q %}<input type="hidden" name="to" value="{{ to_q }}">{% endif %}
-                    {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
-                    {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
-                    <input type="text" name="q" placeholder="Search buildings or rooms" value="{{ query }}">
-                    <button type="submit" class="mini-btn">Search</button>
-                </form>
-            </section>
-
+            {% if query %}
+            <section class="panel search-results-panel">
+                <details open>
+                    <summary>Search results</summary>
             {% for result in results %}
                 <a class="building-card building-link" href="{% url 'building_detail' result.building.id %}">
                     <div class="building-title">{{ result.building.name }} (Building {{ result.building.number }})</div>
@@ -179,8 +209,11 @@
                     </div>
                 {% endif %}
             {% empty %}
-                <section class="panel empty">No buildings or rooms found. Try 62, 63, 69, 101, 225, or 148.</section>
+                <div class="empty">No buildings or rooms found. Try 62, 63, 69, 101, 225, or 148.</div>
             {% endfor %}
+                </details>
+            </section>
+            {% endif %}
         </aside>
 
         <section class="map-wrap">
@@ -278,55 +311,32 @@
         }
     });
 
-    // ── Sidebar collapse / expand ──────────────────────────────────────────
+    // ── Floating search / route panel toggle ───────────────────────────────
     (function () {
-        var main   = document.getElementById('main-layout');
-        var toggle = document.getElementById('sidebar-toggle');
-        if (!main || !toggle) return;
+        var overlay = document.getElementById('map-search-panel');
+        var routePanel = document.getElementById('route-panel');
+        var showRoute = document.getElementById('show-route-panel');
+        var hideRoute = document.getElementById('hide-route-panel');
+        if (!overlay || !routePanel || !showRoute || !hideRoute) return;
 
-        var STORAGE_KEY = 'uq-sidebar-collapsed';
-
-        function isCollapsed() {
-            return main.classList.contains('sidebar-collapsed');
+        function setRouteMode(open) {
+            overlay.classList.toggle('route-open', open);
+            routePanel.classList.toggle('is-open', open);
+            showRoute.setAttribute('aria-expanded', open ? 'true' : 'false');
         }
 
-        var SIDEBAR_WIDTH = 390; // must match CSS grid column width
+        setRouteMode(routePanel.classList.contains('is-open'));
 
-        function setCollapsed(collapsed) {
-            if (collapsed) {
-                main.classList.add('sidebar-collapsed');
-                toggle.classList.add('is-collapsed');
-                toggle.style.left = '0px';
-                toggle.setAttribute('aria-expanded', 'false');
-                toggle.setAttribute('title', 'Show sidebar');
-            } else {
-                main.classList.remove('sidebar-collapsed');
-                toggle.classList.remove('is-collapsed');
-                toggle.style.left = SIDEBAR_WIDTH + 'px';
-                toggle.setAttribute('aria-expanded', 'true');
-                toggle.setAttribute('title', 'Hide sidebar');
-            }
-            try {
-                localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
-            } catch (storageErr) {
-                // localStorage unavailable (private browsing, storage full, etc.) — silently skip persistence
-                console.debug('Sidebar state could not be saved:', storageErr);
-            }
-        }
+        showRoute.addEventListener('click', function () {
+            setRouteMode(true);
+            var fromInput = document.getElementById('from-input');
+            if (fromInput) fromInput.focus();
+        });
 
-        // Restore last state from localStorage
-        try {
-            if (localStorage.getItem(STORAGE_KEY) === '1') {
-                setCollapsed(true);
-            }
-        } catch (storageErr) {
-            // localStorage unavailable — default to expanded sidebar
-            console.debug('Sidebar state could not be restored:', storageErr);
-        }
-
-        toggle.addEventListener('click', function (e) {
-            e.stopPropagation();   // prevent dropdown-close handler firing
-            setCollapsed(!isCollapsed());
+        hideRoute.addEventListener('click', function () {
+            setRouteMode(false);
+            var searchInput = document.getElementById('map-search-input');
+            if (searchInput) searchInput.focus();
         });
     }());
 
