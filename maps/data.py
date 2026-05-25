@@ -568,7 +568,7 @@ BUILDING_69 = {
     "number": "69",
     "name": "Building 69",
     "campus": "St Lucia",
-    "description": "Indoor map prototype for Building 69 levels 1, 2, 3, 4, 7, 8, and 9.",
+    "description": "Indoor map prototype for Building 69 levels 1 to 9.",
     "floors": [
         make_floor_69("1", "Level 1", [
             make_room_69("105", "Room 105", "Large Room", "97.6 m²", 84, 50, 11, 15, "on the right side of Level 1"),

@@ -256,8 +256,27 @@ def _run_route(from_q, from_id, to_q, to_id):
     return from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments, floor_visualization
 
 
+def _get_node_floor_data(node, buildings):
+    """Return {'building': ..., 'floor': ..., 'svg_id': ...} for a node's building+floor, or None."""
+    if not node:
+        return None
+    b_match = re.search(r'\b(\d+)\b', node.building or '')
+    if not b_match:
+        return None
+    b_num = b_match.group(1)
+    for building in buildings:
+        if building.get('number') == b_num:
+            for floor in building['floors']:
+                if floor['level'] == node.floor:
+                    return {
+                        'building': building,
+                        'floor': floor,
+                        'svg_id': f'b{b_num}_f{floor["level"]}',
+                    }
+    return None
+
+
 FLOOR_OPTIONS = [
-    {"value": "0",  "label": "Ground"},
     {"value": "1",  "label": "Floor 1"},
     {"value": "2",  "label": "Floor 2"},
     {"value": "2A", "label": "Floor 2A"},
@@ -283,7 +302,6 @@ def home(request):
     q = request.GET.get("q", "").strip().lower()
     results = _building_results(q)
 
-    selected_floor = request.GET.get("floor", "1")
     selected_campus = request.GET.get("campus", "st-lucia")
 
     from_q = request.GET.get('from', '').strip()
@@ -299,10 +317,21 @@ def home(request):
             _run_route(from_q, from_id, to_q, to_id)
         )
 
+    # Auto-select floor: explicit param > destination node floor > start node floor > default "1"
+    selected_floor = request.GET.get("floor", "")
+    if not selected_floor:
+        if to_node:
+            selected_floor = to_node.floor
+        elif from_node:
+            selected_floor = from_node.floor
+        else:
+            selected_floor = "1"
+
+    # Per-node floor plan data for the split view
+    from_floor_data = _get_node_floor_data(from_node, BUILDINGS)
+    to_floor_data = _get_node_floor_data(to_node, BUILDINGS)
+
     # Gather per-building floor plan data for the selected floor level.
-    # Match buildings whose campus slug matches the selected campus value
-    # (case-insensitive, hyphen/space flexible) so all three St Lucia buildings
-    # appear together in the combined panel.
     def _campus_slug(raw):
         return raw.lower().replace(" ", "-")
 
@@ -343,6 +372,8 @@ def home(request):
         "floor_options": FLOOR_OPTIONS,
         "campus_options": CAMPUS_OPTIONS,
         "map_floors": map_floors,
+        "from_floor_data": from_floor_data,
+        "to_floor_data": to_floor_data,
         "path_fp_coords_json": json.dumps(_get_path_fp_coords(path, BUILDINGS)),
     })
 

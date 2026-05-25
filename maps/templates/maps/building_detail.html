@@ -1,7 +1,7 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>{{ building.name }} Floor Map</title>
     <style>
@@ -116,113 +116,56 @@
             font-weight: 800;
         }
 
-        .legend {
-            color: #6f6860;
-            font-size: 14px;
-        }
-
-        .legend-dot {
-            width: 12px;
-            height: 12px;
-            background: #51247A;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-        }
-
-        .map {
+        /* ── floor plan map (matches homepage style) ── */
+        .floor-plan-map {
             position: relative;
             width: 100%;
             height: 620px;
             background: #fbfaf7;
-            border: 2px solid #d4cdc4;
-            border-radius: 18px;
+            border: 1.5px solid #d4cdc4;
+            border-radius: 10px;
             overflow: hidden;
         }
 
-        .map.real-layout {
-            aspect-ratio: var(--map-aspect, 2.42 / 1);
+        .floor-plan-map.real-layout {
+            aspect-ratio: var(--fp-aspect, 2.42 / 1);
             height: auto;
             background: white;
             border-color: #b9b9b9;
         }
 
-        .map-inner {
+        .fp-inner {
             position: absolute;
             inset: 0;
         }
 
-        .real-layout .map-inner {
+        .real-layout .fp-inner {
             transform: scale(var(--map-zoom, 1));
             transform-origin: center center;
         }
 
-        .floor-svg,
-        .route-svg {
+        .fp-svg {
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
             pointer-events: none;
-        }
-
-        .floor-svg {
             z-index: 1;
         }
 
-        .route-svg {
-            z-index: 3;
-            opacity: 0.48;
-        }
+        /* SVG layer colours — same as homepage */
+        .fp-shell    { fill: rgba(235,240,243,0.75); stroke: #bfc5ca; stroke-width: 0.8; }
+        .fp-corridor { fill: rgba(255,255,255,0.82); stroke: #d4cdc4; stroke-width: 0.35; }
+        .fp-wall     { stroke: #87919a; stroke-width: 0.55; stroke-linecap: round; }
 
-        .floor-shell {
-            fill: rgba(235, 240, 243, 0.75);
-            stroke: #bfc5ca;
-            stroke-width: 0.8;
-        }
+        .floor-plan-map.real-layout .fp-shell    { fill: white; stroke: #1f1f1f; stroke-width: 0.35; }
+        .floor-plan-map.real-layout .fp-corridor { fill: white; stroke: #1f1f1f; stroke-width: 0.18; }
 
-        .corridor-shape {
-            fill: rgba(255, 255, 255, 0.82);
-            stroke: #d4cdc4;
-            stroke-width: 0.35;
-        }
-
-        .wall-line {
-            stroke: #87919a;
-            stroke-width: 0.55;
-            stroke-linecap: round;
-        }
-
-        .floor-detail {
-            fill: #bfc3c4;
-            stroke: #1f1f1f;
-            stroke-width: 0.16;
-        }
-
-        .floor-detail-line {
-            stroke: #1f1f1f;
-            stroke-width: 0.18;
-            stroke-linecap: square;
-        }
-
+        /* B62/B63 detail elements */
+        .floor-detail      { fill: #bfc3c4; stroke: #1f1f1f; stroke-width: 0.16; }
+        .floor-detail-line { stroke: #1f1f1f; stroke-width: 0.18; stroke-linecap: square; }
         .floor-seat,
-        .floor-furniture {
-            fill: none;
-            stroke: #a8a8a8;
-            stroke-width: 0.16;
-        }
-
-        .real-layout .floor-shell {
-            fill: white;
-            stroke: #1f1f1f;
-            stroke-width: 0.35;
-        }
-
-        .real-layout .corridor-shape {
-            fill: white;
-            stroke: #1f1f1f;
-            stroke-width: 0.18;
-        }
+        .floor-furniture   { fill: none; stroke: #a8a8a8; stroke-width: 0.16; }
 
         .map-label {
             position: absolute;
@@ -230,40 +173,27 @@
             top: var(--label-y);
             transform: translate(-50%, -50%);
             z-index: 2;
-            color: #8a8178;
+            color: #5a5450;
             font-size: 12px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            background: rgba(255, 255, 255, 0.72);
+            background: rgba(255,255,255,0.72);
             padding: 4px 7px;
             border-radius: 999px;
             border: 1px solid #ded8d0;
         }
 
-        .entrance {
+        /* ── room nodes (homepage fp-room style) ── */
+        .fp-room {
             position: absolute;
-            left: var(--entrance-x);
-            top: var(--entrance-y);
-            background: #2d2926;
-            color: white;
-            border-radius: 999px;
-            padding: 8px 12px;
-            font-size: 13px;
-            font-weight: bold;
-            z-index: 5;
-            transform: translate(-50%, -50%);
-        }
-
-        .room-node {
-            position: absolute;
-            left: var(--room-x);
-            top: var(--room-y);
-            width: var(--room-w);
-            height: var(--room-h);
-            border: 2px solid #87919a;
-            background: rgba(235, 240, 243, 0.96);
-            border-radius: 10px;
+            left: var(--rx);
+            top: var(--ry);
+            width: var(--rw);
+            height: var(--rh);
+            border: 0.55px solid #787060;
+            background: rgba(246,243,238,0.92);
+            border-radius: 0;
             padding: 7px;
             font-size: 13px;
             text-decoration: none;
@@ -271,52 +201,76 @@
             z-index: 4;
             overflow: hidden;
             box-sizing: border-box;
-        }
-
-        .room-node:hover {
-            border-color: #51247A;
-            background: #efe6f7;
-        }
-
-        .room-node.active {
-            border: 3px solid #51247A;
-            background: #efe6f7;
-            color: #51247A;
-            font-weight: bold;
-        }
-
-        .real-layout .room-node {
-            border: 0.75px solid #1f1f1f;
-            border-radius: 0;
-            background: rgba(255, 255, 255, 0.96);
-            color: #1f1f1f;
-            padding: 0;
-            font-size: 10px;
-            text-align: center;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .fp-room:hover          { border-color: #51247A; background: rgba(239,230,247,0.9); }
+        .fp-room.active         { border: 1.5px solid #51247A; background: rgba(239,230,247,0.9); color: #51247A; font-weight: bold; }
+
+        /* ── room type colour coding (same palette as homepage) ── */
+        .floor-plan-map .fp-room[data-rtype*="teaching"],
+        .floor-plan-map .fp-room[data-rtype*="lecture"],
+        .floor-plan-map .fp-room[data-rtype*="theatre"]  { background: rgba(186,230,184,0.97); border-color: rgba(56,142,60,0.7); }
+
+        .floor-plan-map .fp-room[data-rtype*="computer"],
+        .floor-plan-map .fp-room[data-rtype*=" lab"],
+        .floor-plan-map .fp-room[data-rtype="lab"]       { background: rgba(179,216,252,0.97); border-color: rgba(30,120,200,0.65); }
+
+        .floor-plan-map .fp-room[data-rtype*="office"]   { background: rgba(255,244,140,0.97); border-color: rgba(180,140,10,0.6); }
+        .floor-plan-map .fp-room[data-rtype*="meeting"]  { background: rgba(200,210,255,0.97); border-color: rgba(80,100,200,0.6); }
+        .floor-plan-map .fp-room[data-rtype*="study"]    { background: rgba(220,200,242,0.97); border-color: rgba(110,70,160,0.55); }
+
+        .floor-plan-map .fp-room[data-rtype*="stair"]    { background: rgba(120,188,118,0.97); border-color: rgba(34,110,34,0.72); }
+
+        .floor-plan-map .fp-room[data-rtype*="lift"],
+        .floor-plan-map .fp-room[data-rtype*="elevator"] { background: rgba(100,195,175,0.97); border-color: rgba(20,130,110,0.7); }
+
+        .floor-plan-map .fp-room[data-rtype*="toilet"],
+        .floor-plan-map .fp-room[data-rtype*="bathroom"],
+        .floor-plan-map .fp-room[data-rtype*="wc"]       { background: rgba(200,215,222,0.97); border-color: rgba(80,108,120,0.6); }
+
+        .floor-plan-map .fp-room[data-rtype*="kitchen"],
+        .floor-plan-map .fp-room[data-rtype*="food"],
+        .floor-plan-map .fp-room[data-rtype*="beverage"] { background: rgba(255,210,155,0.97); border-color: rgba(200,120,20,0.6); }
+
+        .floor-plan-map .fp-room[data-rtype*="corridor"] { background: rgba(210,202,193,0.85); border-color: rgba(130,120,110,0.5); }
+
+        .floor-plan-map .fp-room[data-rtype*="storage"],
+        .floor-plan-map .fp-room[data-rtype*="bicycle"]  { background: rgba(220,210,190,0.97); border-color: rgba(140,120,80,0.55); }
+
+        /* real-layout room overrides */
+        .floor-plan-map.real-layout .fp-room {
+            border: 0.75px solid #1f1f1f;
+            border-radius: 0;
+            background: rgba(255,255,255,0.96);
+            color: #1f1f1f;
+            padding: 0;
+            font-size: 10px;
             line-height: 1.05;
         }
 
-        .real-layout .room-node:hover,
-        .real-layout .room-node.active {
+        .floor-plan-map.real-layout .fp-room:hover,
+        .floor-plan-map.real-layout .fp-room.active {
             border: 1.25px solid #51247A;
-            background: rgba(239, 230, 247, 0.9);
+            background: rgba(239,230,247,0.9);
         }
 
-        .real-layout .room-node.circulation-node {
+        .floor-plan-map.real-layout .fp-room.circulation-node {
             border-color: transparent;
-            background: rgba(255, 255, 255, 0.72);
+            background: rgba(255,255,255,0.72);
         }
 
-        .real-layout .room-node.circulation-node:hover,
-        .real-layout .room-node.circulation-node.active {
+        .floor-plan-map.real-layout .fp-room.circulation-node:hover,
+        .floor-plan-map.real-layout .fp-room.circulation-node.active {
             border: 0.75px solid #51247A;
-            background: rgba(239, 230, 247, 0.72);
+            background: rgba(239,230,247,0.72);
         }
 
-        .room-code {
+        .fp-room-code {
             font-weight: 800;
             display: block;
             line-height: 1.1;
@@ -325,7 +279,7 @@
             white-space: nowrap;
         }
 
-        .room-name {
+        .fp-room-name {
             display: block;
             font-size: 11px;
             margin-top: 3px;
@@ -335,33 +289,25 @@
             white-space: nowrap;
         }
 
-        .real-layout .room-name {
-            display: block;
+        .real-layout .fp-room-name {
             font-size: 6px;
             margin-top: 1px;
             max-height: 1.1em;
             overflow: hidden;
         }
 
-        .layout.building-63.floor-2 .map.real-layout,
-        .layout.building-63.floor-2A .map.real-layout {
-            border-color: #b9b9b9;
-        }
+        /* B63 floor-specific overrides */
+        .layout.building-63.floor-2 .floor-plan-map.real-layout,
+        .layout.building-63.floor-2A .floor-plan-map.real-layout { border-color: #b9b9b9; }
 
-        .layout.building-63.floor-2 .wall-line,
-        .layout.building-63.floor-2A .wall-line {
-            stroke: #1f1f1f;
-            stroke-width: 0.25;
-            stroke-linecap: square;
-        }
+        .layout.building-63.floor-2 .fp-wall,
+        .layout.building-63.floor-2A .fp-wall { stroke: #1f1f1f; stroke-width: 0.25; stroke-linecap: square; }
 
-        .layout.building-63.floor-2 .corridor-shape,
-        .layout.building-63.floor-2A .corridor-shape {
-            stroke-width: 0.2;
-        }
+        .layout.building-63.floor-2 .fp-corridor,
+        .layout.building-63.floor-2A .fp-corridor { stroke-width: 0.2; }
 
-        .layout.building-63.floor-2 .room-node,
-        .layout.building-63.floor-2A .room-node {
+        .layout.building-63.floor-2 .fp-room,
+        .layout.building-63.floor-2A .fp-room {
             border-color: transparent;
             background: transparent;
             overflow: visible;
@@ -370,40 +316,22 @@
             padding: 0;
         }
 
-        .layout.building-63.floor-2 .room-node:hover,
-        .layout.building-63.floor-2 .room-node.active,
-        .layout.building-63.floor-2A .room-node:hover,
-        .layout.building-63.floor-2A .room-node.active {
-            border: 0.45px solid #51247A;
-            background: rgba(239, 230, 247, 0.72);
-        }
+        .layout.building-63.floor-2 .fp-room:hover,
+        .layout.building-63.floor-2 .fp-room.active,
+        .layout.building-63.floor-2A .fp-room:hover,
+        .layout.building-63.floor-2A .fp-room.active { border: 0.45px solid #51247A; background: rgba(239,230,247,0.72); }
 
-        .layout.building-63.floor-2 .room-code,
-        .layout.building-63.floor-2A .room-code {
-            font-size: 5.6px;
-            line-height: 1;
-        }
+        .layout.building-63.floor-2 .fp-room-code,
+        .layout.building-63.floor-2A .fp-room-code  { font-size: 5.6px; line-height: 1; }
 
-        .layout.building-63.floor-2 .room-name,
-        .layout.building-63.floor-2A .room-name {
-            font-size: 3.6px;
-            white-space: normal;
-            max-height: 2.4em;
-        }
+        .layout.building-63.floor-2 .fp-room-name,
+        .layout.building-63.floor-2A .fp-room-name  { font-size: 3.6px; white-space: normal; max-height: 2.4em; }
 
-        .layout.building-63.floor-2A .room-node {
-            font-size: 6.4px;
-        }
+        .layout.building-63.floor-2A .fp-room      { font-size: 6.4px; }
+        .layout.building-63.floor-2A .fp-room-code { font-size: 7px; }
+        .layout.building-63.floor-2A .fp-room-name { font-size: 4.7px; max-height: 2.6em; }
 
-        .layout.building-63.floor-2A .room-code {
-            font-size: 7px;
-        }
-
-        .layout.building-63.floor-2A .room-name {
-            font-size: 4.7px;
-            max-height: 2.6em;
-        }
-
+        /* ── right-hand card ── */
         .directions-title {
             font-size: 23px;
             font-weight: 800;
@@ -478,27 +406,11 @@
         }
 
         @media (max-width: 900px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
-
-            .top-row {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .map {
-                height: 420px;
-            }
-
-            .room-node {
-                font-size: 10px;
-                padding: 4px;
-            }
-
-            .room-name {
-                display: none;
-            }
+            .layout { grid-template-columns: 1fr; }
+            .top-row { flex-direction: column; align-items: flex-start; }
+            .floor-plan-map { height: 420px; }
+            .fp-room { font-size: 10px; padding: 4px; }
+            .fp-room-name { display: none; }
         }
     </style>
 </head>
@@ -527,23 +439,20 @@
         <div class="map-card">
             <div class="map-header">
                 <div class="map-title">{{ current_floor.label }} map</div>
-                <div class="legend">
-                    <span><span class="legend-dot"></span>selected route</span>
-                </div>
             </div>
 
             {% if current_floor.real_layout %}
-                <div class="map real-layout" style="--map-aspect: {{ current_floor.aspect_ratio|default:'2.42 / 1' }}; --map-zoom: {{ current_floor.map_zoom|default:'1' }};">
+                <div class="floor-plan-map real-layout" style="--fp-aspect: {{ current_floor.aspect_ratio|default:'2.42 / 1' }}; --map-zoom: {{ current_floor.map_zoom|default:'1' }};">
             {% else %}
-                <div class="map">
+                <div class="floor-plan-map">
             {% endif %}
-                <div class="map-inner">
-                    <svg class="floor-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                        <polygon class="floor-shell" points="{{ current_floor.outline_points }}"></polygon>
+                <div class="fp-inner">
+                    <svg class="fp-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon class="fp-shell" points="{{ current_floor.outline_points }}"></polygon>
 
                         {% for corridor in current_floor.corridors %}
                             <rect
-                                class="corridor-shape"
+                                class="fp-corridor"
                                 x="{{ corridor.x }}"
                                 y="{{ corridor.y }}"
                                 width="{{ corridor.w }}"
@@ -554,7 +463,7 @@
 
                         {% for wall in current_floor.walls %}
                             <line
-                                class="wall-line"
+                                class="fp-wall"
                                 x1="{{ wall.x1 }}"
                                 y1="{{ wall.y1 }}"
                                 x2="{{ wall.x2 }}"
@@ -564,85 +473,43 @@
 
                         {% for detail in current_floor.details %}
                             {% if detail.kind == "rect" %}
-                                <rect
-                                    class="floor-detail"
-                                    x="{{ detail.x }}"
-                                    y="{{ detail.y }}"
-                                    width="{{ detail.w }}"
-                                    height="{{ detail.h }}"
-                                ></rect>
+                                <rect class="floor-detail"
+                                    x="{{ detail.x }}" y="{{ detail.y }}"
+                                    width="{{ detail.w }}" height="{{ detail.h }}"></rect>
                             {% elif detail.kind == "outline_rect" %}
-                                <rect
-                                    class="floor-furniture"
-                                    x="{{ detail.x }}"
-                                    y="{{ detail.y }}"
-                                    width="{{ detail.w }}"
-                                    height="{{ detail.h }}"
-                                ></rect>
+                                <rect class="floor-furniture"
+                                    x="{{ detail.x }}" y="{{ detail.y }}"
+                                    width="{{ detail.w }}" height="{{ detail.h }}"></rect>
                             {% elif detail.kind == "seat" %}
-                                <circle
-                                    class="floor-seat"
-                                    cx="{{ detail.cx }}"
-                                    cy="{{ detail.cy }}"
-                                    r="{{ detail.r }}"
-                                ></circle>
+                                <circle class="floor-seat"
+                                    cx="{{ detail.cx }}" cy="{{ detail.cy }}" r="{{ detail.r }}"></circle>
                             {% elif detail.kind == "cross" %}
-                                <line
-                                    class="floor-detail-line"
-                                    x1="{{ detail.x1 }}"
-                                    y1="{{ detail.y1 }}"
-                                    x2="{{ detail.x2 }}"
-                                    y2="{{ detail.y2 }}"
-                                ></line>
-                                <line
-                                    class="floor-detail-line"
-                                    x1="{{ detail.x3 }}"
-                                    y1="{{ detail.y3 }}"
-                                    x2="{{ detail.x4 }}"
-                                    y2="{{ detail.y4 }}"
-                                ></line>
+                                <line class="floor-detail-line"
+                                    x1="{{ detail.x1 }}" y1="{{ detail.y1 }}"
+                                    x2="{{ detail.x2 }}" y2="{{ detail.y2 }}"></line>
+                                <line class="floor-detail-line"
+                                    x1="{{ detail.x3 }}" y1="{{ detail.y3 }}"
+                                    x2="{{ detail.x4 }}" y2="{{ detail.y4 }}"></line>
                             {% endif %}
                         {% endfor %}
                     </svg>
 
                     {% for label in current_floor.labels %}
-                        <div
-                            class="map-label"
-                            style="--label-x: {{ label.x }}%; --label-y: {{ label.y }}%;"
-                        >
+                        <div class="map-label"
+                             style="--label-x: {{ label.x }}%; --label-y: {{ label.y }}%;">
                             {{ label.text }}
                         </div>
                     {% endfor %}
 
-                    <div
-                        class="entrance"
-                        style="--entrance-x: {{ current_floor.entrance_x }}%; --entrance-y: {{ current_floor.entrance_y }}%;"
-                    >
-                        Entrance
-                    </div>
-
-                    {% if selected_room %}
-                        <svg class="route-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <polyline
-                                points="{{ selected_room.route_points }}"
-                                fill="none"
-                                stroke="#51247A"
-                                stroke-width="{% if current_floor.real_layout %}0.7{% else %}1.6{% endif %}"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-dasharray="{% if current_floor.real_layout %}1.2 1.2{% else %}2.2 1.6{% endif %}"
-                            />
-                        </svg>
-                    {% endif %}
-
                     {% for room in current_floor.rooms %}
                         <a
-                            class="room-node {% if room.type == 'Corridor' %}circulation-node{% endif %} {% if selected_room and selected_room.code == room.code %}active{% endif %}"
+                            class="fp-room {% if room.type == 'Corridor' %}circulation-node{% endif %} {% if selected_room and selected_room.code == room.code %}active{% endif %}"
                             href="{% url 'building_detail' building.id %}?floor={{ current_floor.level }}&room={{ room.code }}"
-                            style="--room-x: {{ room.x }}%; --room-y: {{ room.y }}%; --room-w: {{ room.w }}%; --room-h: {{ room.h }}%;"
+                            style="--rx: {{ room.x }}%; --ry: {{ room.y }}%; --rw: {{ room.w }}%; --rh: {{ room.h }}%;"
+                            data-rtype="{{ room.type|lower }}"
                         >
-                            <span class="room-code">{{ room.code }}</span>
-                            <span class="room-name">{{ room.name }}</span>
+                            <span class="fp-room-code">{{ room.code }}</span>
+                            <span class="fp-room-name">{{ room.name }}</span>
                         </a>
                     {% endfor %}
                 </div>
@@ -669,7 +536,6 @@
 
                 <div class="room-list">
                     <p class="hint">Choose another room:</p>
-
                     {% for room in current_floor.rooms %}
                         <a class="{% if selected_room.code == room.code %}active{% endif %}"
                            href="{% url 'building_detail' building.id %}?floor={{ current_floor.level }}&room={{ room.code }}">
@@ -681,7 +547,7 @@
             {% else %}
                 <div class="directions-title">Choose a room</div>
                 <p class="hint">
-                    Click a room on the generated floor map to see details loaded from the data folder.
+                    Click a room on the floor map to see details.
                 </p>
 
                 <div class="room-list">

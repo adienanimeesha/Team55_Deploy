@@ -129,7 +129,6 @@
 
         .floating-search-panel,
         .floating-route-panel,
-        .route-results-panel,
         .search-results-panel {
             background: rgba(255, 255, 255, 0.96);
             border: 1px solid rgba(229, 222, 214, 0.9);
@@ -141,7 +140,7 @@
 
         .map-search-form {
             display: grid;
-            grid-template-columns: 42px minmax(0, 1fr) 42px 42px;
+            grid-template-columns: 42px minmax(0, 1fr) 42px;
             align-items: center;
             gap: 8px;
             padding: 10px 12px;
@@ -258,7 +257,6 @@
             accent-color: var(--uq-purple);
         }
 
-        .route-results-panel,
         .search-results-panel {
             max-height: min(420px, calc(100vh - 285px));
             overflow: auto;
@@ -370,13 +368,15 @@
             height: 13px;
             border-radius: 50%;
             justify-self: center;
-            background: var(--uq-purple);
-            box-shadow: 0 0 0 4px var(--uq-purple-soft);
+            background: #22c55e;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.22);
         }
 
-        .dot.to {
-            background: #2d2926;
-            box-shadow: 0 0 0 4px #eee9e3;
+        .pin-to {
+            width: 16px;
+            height: 20px;
+            justify-self: center;
+            display: block;
         }
 
         input[type="text"] {
@@ -507,27 +507,28 @@
 
         .direction-step {
             display: grid;
-            grid-template-columns: 28px 1fr;
+            grid-template-columns: 26px 1fr;
             gap: 10px;
-            padding: 14px 0;
+            padding: 10px 0;
             border-top: 1px solid #eee9e3;
         }
 
         .direction-step:first-child {
             border-top: none;
+            padding-top: 6px;
         }
 
         .step-content {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
         }
 
         .step-description {
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 500;
             color: var(--ink);
-            line-height: 1.4;
+            line-height: 1.35;
         }
 
         .step-meta {
@@ -1506,39 +1507,440 @@
             font-weight: 700;
         }
 
+        /* ── Glow: shown when "Get Directions" is pressed with an empty from-field ── */
+        @keyframes from-glow-pulse {
+            0%   { border-color: #ddd8d1;          box-shadow: 0 0 0 0   rgba(81, 36, 122, 0);    background: #fbfaf8; }
+            20%  { border-color: var(--uq-purple);  box-shadow: 0 0 0 5px rgba(81, 36, 122, 0.28); background: var(--uq-purple-soft); }
+            50%  { border-color: var(--uq-purple);  box-shadow: 0 0 0 2px rgba(81, 36, 122, 0.12); background: var(--uq-purple-soft); }
+            70%  { border-color: var(--uq-purple);  box-shadow: 0 0 0 5px rgba(81, 36, 122, 0.22); background: var(--uq-purple-soft); }
+            100% { border-color: #ddd8d1;          box-shadow: 0 0 0 0   rgba(81, 36, 122, 0);    background: #fbfaf8; }
+        }
+
+        .input-row.needs-glow {
+            animation: from-glow-pulse 1.1s ease-in-out;
+        }
+
         .selection-meta {
             color: var(--muted);
             font-size: 12px;
             padding: 4px 12px 2px;
         }
 
+        /* ── Destination search disambiguation panel (inside floating-search-panel) ── */
+        .candidates-panel {
+            border-top: 1px solid #eee9e3;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .candidates-title {
+            padding: 8px 13px 4px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Destination confirmed panel ── */
+        .floating-dest-panel {
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(229, 222, 214, 0.9);
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(45, 41, 38, 0.18);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 14px;
+        }
+
+        /* destination row: pin | info | ✕ */
+        .dest-to-row {
+            display: grid;
+            grid-template-columns: 24px 1fr 32px;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0 4px;
+        }
+
+        .dest-pin {
+            width: 20px;
+            height: 25px;
+            flex-shrink: 0;
+        }
+
+        .dest-info {
+            min-width: 0;
+        }
+
+        .dest-name {
+            font-weight: 800;
+            font-size: 15px;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dest-meta {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .from-form {
+            display: grid;
+            gap: 10px;
+        }
+
+        .dest-submit {
+            display: grid;
+        }
+
+        .btn-outline {
+            border: 2px solid var(--uq-purple);
+            background: white;
+            color: var(--uq-purple);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-weight: 800;
+            font-size: 15px;
+            cursor: pointer;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        .btn-outline:hover {
+            background: var(--uq-purple-soft);
+        }
+
+        /* ── Route results panel (new compact header style) ── */
+        .route-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee9e3;
+        }
+
+        .change-route-link {
+            color: var(--uq-purple);
+            font-weight: 700;
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        .change-route-link:hover {
+            text-decoration: underline;
+        }
+
+        .route-summary-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        .route-endpoints {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .endpoint-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+        }
+
+        /* thin vertical connector line between from-dot and to-pin */
+        .route-ep-divider {
+            width: 1.5px;
+            height: 14px;
+            background: #d0c9c0;
+            margin-left: 7px;   /* lines up with centre of the 14px dot */
+            border-radius: 1px;
+        }
+
+        .endpoint-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .endpoint-to .pin-to {
+            flex-shrink: 0;
+        }
+
+        /* ── Route summary card (compact left overlay, replaces route-results-panel) ── */
+        .route-summary-card {
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(229, 222, 214, 0.9);
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(45, 41, 38, 0.18);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 10px 14px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .route-summary-card .change-route-link {
+            font-size: 13px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #f0ebe4;
+            display: block;
+        }
+
+        /* ── Bottom drawer ── */
+        .route-drawer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 60;
+            /* auto-sizes to content; caps at ¼ screen */
+            height: auto;
+            max-height: 25vh;
+            min-height: 64px;           /* always at least the handle bar */
+            background: white;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 28px rgba(45, 41, 38, 0.18);
+            display: flex;
+            flex-direction: column;
+            /* peek state: only 64px visible above the bottom edge */
+            transform: translateY(calc(100% - 64px));
+            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            will-change: transform;
+        }
+
+        .route-drawer.is-open {
+            transform: translateY(0);
+        }
+
+        /* ── Frozen handle / header (always visible, never shrinks) ── */
+        .drawer-handle-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+            background: none;
+            border: none;
+            border-bottom: 1px solid #f0ebe4;
+            padding: 7px 18px 9px;
+            cursor: grab;
+            text-align: left;
+            font-family: inherit;
+            flex-shrink: 0;             /* never squashed — always visible */
+            border-radius: 20px 20px 0 0;
+        }
+
+        .drawer-handle-wrap:active { cursor: grabbing; }
+
+        .drawer-pill {
+            width: 36px;
+            height: 4px;
+            background: #ccc5bc;
+            border-radius: 2px;
+            margin: 0 auto 7px;
+        }
+
+        .drawer-peek {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .drawer-peek-left {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .drawer-step-count {
+            font-weight: 800;
+            font-size: 14px;
+            color: var(--ink);
+            white-space: nowrap;
+        }
+
+        .drawer-peek-route {
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+
+        .drawer-chevron {
+            font-size: 18px;
+            color: var(--muted);
+            line-height: 1;
+            flex-shrink: 0;
+            transition: transform 0.28s ease;
+        }
+
+        /* ── Scrollable steps list (free-scrolls when steps exceed visible area) ── */
+        .drawer-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            padding: 4px 18px 24px;
+            /* ensure it never grows beyond what the capped drawer allows */
+            min-height: 0;
+        }
+
+        /* ── Split map view (replaces map-wrap when route is active) ── */
+        .split-map-view {
+            display: grid;
+            grid-template-columns: 1fr 1px 1fr;
+            min-height: 0;
+            overflow: hidden;
+            background: #f4f1ec;
+        }
+
+        .split-divider {
+            background: #d8d2cb;
+            flex-shrink: 0;
+        }
+
+        .split-panel {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .split-panel-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 18px;
+            background: white;
+            border-bottom: 1px solid #ece6df;
+            flex-shrink: 0;
+        }
+
+        .split-dot {
+            flex-shrink: 0;
+        }
+
+        .split-pin {
+            width: 16px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .split-panel-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .split-panel-title {
+            font-weight: 800;
+            font-size: 14px;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .split-panel-meta {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .split-floor-container {
+            flex: 1;
+            overflow: auto;
+            padding: 16px;
+            background: #f7f3eb;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .split-floor-container .floor-plan-map {
+            max-width: 100%;
+            width: 100%;
+        }
+
+        .split-no-floorplan {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            color: var(--muted);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* ── Single map view (same floor) ── */
+        .single-map-view {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+            background: #f7f3eb;
+        }
+
+        .single-floor-container {
+            flex: 1;
+            overflow: auto;
+            padding: 16px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .single-floor-container .floor-plan-map {
+            max-width: 100%;
+            width: 100%;
+        }
+
+        /* ── Responsive: narrow screens (tablet / phone) ── */
         @media (max-width: 920px) {
             .app {
-                grid-template-rows: auto auto;
+                grid-template-rows: auto 1fr;
             }
 
             .topbar {
-                padding: 16px;
-                gap: 12px;
-                align-items: flex-start;
-                flex-direction: column;
+                padding: 0 16px;
+                height: 56px;
+                flex-direction: row;
+                align-items: center;
             }
 
             .main {
                 display: flex;
                 flex-direction: column;
                 position: relative;
+                min-height: 0;
+                height: 100%;
             }
 
             .map-overlay-panel {
-                top: 92px;
+                top: 70px;
                 left: 12px;
-                width: min(520px, calc(100vw - 24px));
-                max-height: calc(100vh - 124px);
+                width: min(420px, calc(100vw - 24px));
+                max-height: 40vh;
             }
 
             .map-search-form {
-                grid-template-columns: 36px minmax(0, 1fr) 38px 38px;
+                grid-template-columns: 36px minmax(0, 1fr) 38px;
                 gap: 6px;
                 padding: 8px;
             }
@@ -1547,7 +1949,6 @@
                 font-size: 15px;
             }
 
-            .route-results-panel,
             .search-results-panel {
                 max-height: 220px;
             }
@@ -1562,7 +1963,6 @@
                 overflow: hidden;
             }
 
-            /* on mobile, collapsed sidebar hides below the map */
             .main.sidebar-collapsed .sidebar {
                 max-height: 0;
                 padding: 0;
@@ -1570,7 +1970,8 @@
 
             .map-wrap {
                 order: 1;
-                height: 520px;
+                flex: 1;
+                min-height: 0;
             }
 
             .map-toolbar {
@@ -1625,6 +2026,103 @@
             .combined-floor-heading {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+
+            /* Single map: full-height panel on mobile */
+            .single-map-view {
+                flex: 1;
+                min-height: 0;
+            }
+
+            .single-floor-container {
+                padding: 10px;
+            }
+
+            /* Stack split view vertically on mobile portrait */
+            .split-map-view {
+                flex: 1;
+                min-height: 0;
+                display: grid;
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 1px 1fr;
+                overflow-y: auto;
+            }
+
+            .split-divider {
+                height: 1px;
+                width: 100%;
+            }
+
+            .split-panel {
+                min-height: 260px;
+            }
+
+            /* Drawer on mobile: allow a touch more room in portrait */
+            .route-drawer {
+                max-height: 28vh;
+            }
+
+            /* Route summary card full-width on portrait */
+            .route-summary-card {
+                width: calc(100vw - 24px);
+            }
+        }
+
+        /* ── Portrait phone: extra-narrow optimisations ── */
+        @media (max-width: 480px) {
+            .topbar {
+                height: 52px;
+            }
+
+            .brand {
+                font-size: 18px;
+                gap: 10px;
+            }
+
+            .brand-mark {
+                width: 30px;
+                height: 30px;
+                font-size: 15px;
+            }
+
+            .map-overlay-panel {
+                top: 62px;
+                left: 10px;
+                width: calc(100vw - 20px);
+                max-height: 35vh;
+            }
+
+            .floating-dest-panel,
+            .floating-search-panel {
+                border-radius: 12px;
+            }
+
+            /* Dest panel: stack from-input + dest-row more tightly */
+            .dest-to-row {
+                padding: 4px 0 2px;
+            }
+
+            .route-drawer {
+                border-radius: 16px 16px 0 0;
+                max-height: 30vh;
+            }
+
+            .drawer-handle-wrap {
+                border-radius: 16px 16px 0 0;
+                padding: 6px 14px 8px;
+            }
+
+            .drawer-scroll {
+                padding: 4px 14px 22px;
+            }
+
+            /* Direction steps: tighter on small screens */
+            .direction-step {
+                padding: 10px 0;
+            }
+
+            .step-description {
+                font-size: 13px;
             }
         }
 
