@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>UQ Indoor Maps</title>
+    <link rel="stylesheet" href="https://api.mazemap.com/js/v2.2.6/mazemap.min.css">
+    <script src="https://api.mazemap.com/js/v2.2.6/mazemap.min.js"></script>
     {% include "maps/partials/home_styles.html" %}
 </head>
 <body>
@@ -204,17 +206,15 @@
                 </form>
             </div>
 
-            {% if path and uq_map_embed_url %}
-            <div class="uq-map-embed">
+            <div class="mazemap-shell">
+                <div id="mazemap-container" class="mazemap-sdk"></div>
                 <iframe
+                    class="mazemap-fallback"
                     src="{{ uq_map_embed_url }}"
-                    title="UQ map for {{ to_node.label }}"
+                    title="{% if to_node %}UQ map for {{ to_node.label }}{% else %}UQ St Lucia map{% endif %}"
                     loading="lazy"
                     referrerpolicy="no-referrer-when-downgrade"></iframe>
             </div>
-            {% else %}
-            {% include "maps/partials/campus_map.html" %}
-            {% endif %}
 
         </section>
 
@@ -443,6 +443,7 @@
     (function () {
         var mapWrap = document.querySelector('.map-wrap');
         if (!mapWrap) return;
+        if (document.getElementById('mazemap-container')) return;
 
         if (mapWrap.scrollLeft === 0 && mapWrap.scrollTop === 0) {
             mapWrap.scrollLeft = 180;
@@ -485,6 +486,185 @@
 }());
 
 // ── Route markers on campus map ───────────────────────────────────────────────
+// MazeMap SDK map surface
+(function () {
+    var container = document.getElementById('mazemap-container');
+    var fallback = document.querySelector('.mazemap-fallback');
+    if (!container) return;
+
+    var routeCoords = {{ path_coords|default:"[]"|safe }};
+    var selectedFloor = "{{ selected_floor|escapejs }}";
+    var fromPoint = {% if from_node and from_node.lat and from_node.lng %}{
+        lat: {{ from_node.lat }},
+        lng: {{ from_node.lng }},
+        label: "{{ from_node.label|escapejs }}",
+        floor: "{{ from_node.floor|escapejs }}"
+    }{% else %}null{% endif %};
+    var toPoint = {% if to_node and to_node.lat and to_node.lng %}{
+        lat: {{ to_node.lat }},
+        lng: {{ to_node.lng }},
+        label: "{{ to_node.label|escapejs }}",
+        floor: "{{ to_node.floor|escapejs }}"
+    }{% else %}null{% endif %};
+
+    function numberOr(value, fallbackValue) {
+        var parsed = parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : fallbackValue;
+    }
+
+    function centerPoint() {
+        if (toPoint) return { lng: toPoint.lng, lat: toPoint.lat };
+        if (fromPoint) return { lng: fromPoint.lng, lat: fromPoint.lat };
+        return { lng: 153.01222576055739, lat: -27.49907705145847 };
+    }
+
+    function showFallback() {
+        container.style.display = 'none';
+        if (fallback) fallback.style.display = 'block';
+    }
+
+    function addMarker(map, point, type) {
+        if (!point || !window.Mazemap || !Mazemap.MazeMarker) return;
+        var marker = new Mazemap.MazeMarker({
+            color: type === 'start' ? '#5aa354' : '#dc2626',
+            innerCircle: true,
+            innerCircleColor: '#ffffff',
+            size: 34
+        })
+            .setLngLat({ lng: point.lng, lat: point.lat })
+            .addTo(map);
+
+        if (marker.getElement) {
+            marker.getElement().title = point.label;
+        }
+    }
+
+    function hideMazeMapFloorControl() {
+        var selectors = [
+            '.mazemap-zlevel-bar',
+            '.mazemap-zlevel-control',
+            '.mazemap-zlevel-control-container',
+            '.mazemap-z-level-control',
+            '.mapboxgl-ctrl-zlevel',
+            '[class*="zlevel" i]',
+            '[class*="z-level" i]'
+        ];
+        document.querySelectorAll(selectors.join(',')).forEach(function (el) {
+            if (el.closest('.map-toolbar')) return;
+            el.style.display = 'none';
+            el.setAttribute('aria-hidden', 'true');
+        });
+    }
+
+    function routeFeatureCollection() {
+        if (!routeCoords || routeCoords.length < 2) {
+            return null;
+        }
+
+        return {
+            type: 'FeatureCollection',
+            features: [{
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'LineString',
+                    coordinates: routeCoords.map(function (coord) {
+                        return [coord.lng, coord.lat];
+                    })
+                }
+            }]
+        };
+    }
+
+    function addRouteLayer(map) {
+        var geojson = routeFeatureCollection();
+        if (!geojson || !map.addSource || !map.addLayer) return;
+
+        if (map.getSource && map.getSource('uq-route')) {
+            map.getSource('uq-route').setData(geojson);
+            return;
+        }
+
+        map.addSource('uq-route', {
+            type: 'geojson',
+            data: geojson
+        });
+
+        map.addLayer({
+            id: 'uq-route-glow',
+            type: 'line',
+            source: 'uq-route',
+            layout: {
+                'line-cap': 'round',
+                'line-join': 'round'
+            },
+            paint: {
+                'line-color': '#ffffff',
+                'line-width': 10,
+                'line-opacity': 0.82
+            }
+        });
+
+        map.addLayer({
+            id: 'uq-route-line',
+            type: 'line',
+            source: 'uq-route',
+            layout: {
+                'line-cap': 'round',
+                'line-join': 'round'
+            },
+            paint: {
+                'line-color': '#51247A',
+                'line-width': 6,
+                'line-opacity': 0.94
+            }
+        });
+    }
+
+    function fitRoute(map) {
+        if (!routeCoords || routeCoords.length < 2 || !window.Mazemap || !Mazemap.LngLatBounds) return;
+        var bounds = new Mazemap.LngLatBounds();
+        routeCoords.forEach(function (coord) {
+            bounds.extend([coord.lng, coord.lat]);
+        });
+        map.fitBounds(bounds, { padding: 90, maxZoom: 20 });
+    }
+
+    try {
+        if (!window.Mazemap || !Mazemap.Map) {
+            showFallback();
+            return;
+        }
+
+        if (fallback) fallback.style.display = 'none';
+        var map = new Mazemap.Map({
+            container: 'mazemap-container',
+            campuses: 406,
+            center: centerPoint(),
+            zoom: routeCoords && routeCoords.length ? 19.2 : 18.4,
+            zLevel: numberOr((toPoint && toPoint.floor) || (fromPoint && fromPoint.floor) || selectedFloor, 2)
+        });
+
+        map.on('load', function () {
+            try {
+                hideMazeMapFloorControl();
+                window.setTimeout(hideMazeMapFloorControl, 250);
+                window.setTimeout(hideMazeMapFloorControl, 1000);
+                addMarker(map, fromPoint, 'start');
+                addMarker(map, toPoint, 'dest');
+                addRouteLayer(map);
+                fitRoute(map);
+            } catch (error) {
+                showFallback();
+            }
+        });
+
+        map.on('error', showFallback);
+    } catch (error) {
+        showFallback();
+    }
+}());
+
 {% if path %}
 (function () {
     function roomCode(label) {

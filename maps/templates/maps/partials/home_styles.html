@@ -789,18 +789,36 @@
                 var(--map-bg);
         }
 
-        .uq-map-embed {
+        .mazemap-shell {
             position: absolute;
             inset: 0;
             z-index: 1;
             background: #f5f2ed;
         }
 
-        .uq-map-embed iframe {
+        .mazemap-sdk,
+        .mazemap-fallback {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
+        }
+
+        .mazemap-fallback {
             border: 0;
             display: block;
+        }
+
+        .mazemap-shell .mazemap-zlevel-bar,
+        .mazemap-shell .mazemap-zlevel-control,
+        .mazemap-shell .mazemap-zlevel-control-container,
+        .mazemap-shell .mazemap-z-level-control,
+        .mazemap-shell .mapboxgl-ctrl-zlevel,
+        .mazemap-shell .mapboxgl-ctrl-group[aria-label*="floor" i],
+        .mazemap-shell .mapboxgl-ctrl-group[aria-label*="level" i],
+        .mazemap-shell [class*="zlevel" i],
+        .mazemap-shell [class*="z-level" i] {
+            display: none !important;
         }
 
         /* SVG campus overview fills the entire canvas */

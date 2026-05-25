@@ -297,19 +297,28 @@ def _get_node_floor_data(node, buildings):
     return None
 
 
-def _uq_map_embed_url(node):
-    if not node or not node.lat or not node.lng or not node.uq_maps_identifier:
-        return ""
+def _uq_map_embed_url(node=None, floor="2"):
+    lat = -27.49907705145847
+    lng = 153.01222576055739
+    z_level = floor or "2"
+    identifier = ""
+
+    if node and node.lat and node.lng:
+        lat = node.lat
+        lng = node.lng
+        z_level = node.floor or z_level
+        identifier = node.uq_maps_identifier or ""
 
     params = {
         "zoom": "19.550611410027877",
         "campusId": "406",
-        "lat": node.lat,
-        "lng": node.lng,
-        "zLevel": node.floor,
-        "identifier": node.uq_maps_identifier,
+        "lat": lat,
+        "lng": lng,
+        "zLevel": z_level,
         "embed": "true",
     }
+    if identifier:
+        params["identifier"] = identifier
     return f"https://maps.uq.edu.au/?{urlencode(params)}"
 
 
@@ -423,7 +432,7 @@ def home(request):
         "map_floors": map_floors,
         "from_floor_data": from_floor_data,
         "to_floor_data": to_floor_data,
-        "uq_map_embed_url": _uq_map_embed_url(to_node),
+        "uq_map_embed_url": _uq_map_embed_url(to_node or from_node, selected_floor),
         "path_fp_coords_json": json.dumps(_get_path_fp_coords(path, BUILDINGS)),
     })
 
