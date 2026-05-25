@@ -10,6 +10,7 @@ class Node(models.Model):
     lat = models.FloatField(null=True, blank=True)
     lng = models.FloatField(null=True, blank=True)
     uq_maps_identifier = models.CharField(max_length=100, blank=True)
+    poi_id = models.IntegerField(null=True, blank=True, db_index=True)
 
     def __str__(self):
         return self.label or self.id

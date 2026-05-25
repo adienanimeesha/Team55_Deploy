@@ -1,8 +1,10 @@
 import json
 import re
+from urllib.parse import urlencode
 from django.db.models import Q
 from django.shortcuts import render
 from .data import BUILDINGS
+from .mazemap import MazeMapRouteError, get_route, node_poi_id
 from indoor_nav.models import Node
 from indoor_nav.pathfinding import dijkstra
 from indoor_nav.path_simplification import simplify_path, format_directions
@@ -206,48 +208,67 @@ def _run_route(from_q, from_id, to_q, to_id):
     path = path_coords = route_error = simplified_segments = floor_visualization = None
 
     if from_node and to_node:
-        path, _ = dijkstra(from_node.id, to_node.id)
+        source_poi = node_poi_id(from_node)
+        target_poi = node_poi_id(to_node)
+
+        if source_poi and target_poi:
+            try:
+                mazemap_route = get_route(source_poi, target_poi)
+                path = [from_node, to_node]
+                simplified_segments = mazemap_route["directions"]
+                if not simplified_segments:
+                    simplified_segments = [{
+                        "description": f'Follow the MazeMap route to "{to_node.label}".',
+                    }]
+                coords = mazemap_route["coordinates"]
+                if len(coords) >= 2:
+                    path_coords = json.dumps(coords)
+            except MazeMapRouteError:
+                path = None
+
         if path is None:
-            route_error = f'No path found between "{from_node.label}" and "{to_node.label}".'
-        else:
-            # Generate simplified path segments
-            simplified_segments = simplify_path(path, angle_threshold=15.0)
-            
-            # Generate floor-based visualization
-            if simplified_segments:
-                floor_segments = group_segments_by_floor(simplified_segments)
-                floor_order = get_floor_order(simplified_segments)
+            path, _ = dijkstra(from_node.id, to_node.id)
+            if path is None:
+                route_error = f'No path found between "{from_node.label}" and "{to_node.label}".'
+            else:
+                # Generate simplified path segments
+                simplified_segments = simplify_path(path, angle_threshold=15.0)
                 
-                floor_visualization = []
-                for i, floor_num in enumerate(floor_order):
-                    floor_label = f"Floor {floor_num}"
-                    segments = floor_segments.get(floor_label, [])
+                # Generate floor-based visualization
+                if simplified_segments:
+                    floor_segments = group_segments_by_floor(simplified_segments)
+                    floor_order = get_floor_order(simplified_segments)
                     
-                    # Generate SVG overlay for this floor
-                    svg_overlay = segments_to_svg(segments)
-                    
-                    # Get floor transitions (stairs/elevators to next floor)
-                    next_floor_transition = None
-                    if i < len(floor_order) - 1:
-                        next_floor = f"Floor {floor_order[i + 1]}"
-                        next_floor_transition = create_floor_transition_info(
-                            floor_label, next_floor, simplified_segments
-                        )
-                    
-                    floor_visualization.append({
-                        'floor': floor_label,
-                        'floor_num': floor_num,
-                        'segments': segments,
-                        'svg_overlay': svg_overlay,
-                        'next_transition': next_floor_transition
-                    })
-            
-            coords = [
-                {'lat': n.lat, 'lng': n.lng, 'label': n.label}
-                for n in path if n.lat is not None and n.lng is not None
-            ]
-            if len(coords) >= 2:
-                path_coords = json.dumps(coords)
+                    floor_visualization = []
+                    for i, floor_num in enumerate(floor_order):
+                        floor_label = f"Floor {floor_num}"
+                        segments = floor_segments.get(floor_label, [])
+                        
+                        # Generate SVG overlay for this floor
+                        svg_overlay = segments_to_svg(segments)
+                        
+                        # Get floor transitions (stairs/elevators to next floor)
+                        next_floor_transition = None
+                        if i < len(floor_order) - 1:
+                            next_floor = f"Floor {floor_order[i + 1]}"
+                            next_floor_transition = create_floor_transition_info(
+                                floor_label, next_floor, simplified_segments
+                            )
+                        
+                        floor_visualization.append({
+                            'floor': floor_label,
+                            'floor_num': floor_num,
+                            'segments': segments,
+                            'svg_overlay': svg_overlay,
+                            'next_transition': next_floor_transition
+                        })
+                
+                coords = [
+                    {'lat': n.lat, 'lng': n.lng, 'label': n.label}
+                    for n in path if n.lat is not None and n.lng is not None
+                ]
+                if len(coords) >= 2:
+                    path_coords = json.dumps(coords)
     else:
         route_error = (
             _missing_error(from_q, from_node, from_candidates)
@@ -274,6 +295,22 @@ def _get_node_floor_data(node, buildings):
                         'svg_id': f'b{b_num}_f{floor["level"]}',
                     }
     return None
+
+
+def _uq_map_embed_url(node):
+    if not node or not node.lat or not node.lng or not node.uq_maps_identifier:
+        return ""
+
+    params = {
+        "zoom": "19.550611410027877",
+        "campusId": "406",
+        "lat": node.lat,
+        "lng": node.lng,
+        "zLevel": node.floor,
+        "identifier": node.uq_maps_identifier,
+        "embed": "true",
+    }
+    return f"https://maps.uq.edu.au/?{urlencode(params)}"
 
 
 FLOOR_OPTIONS = [
@@ -308,14 +345,26 @@ def home(request):
     to_q = request.GET.get('to', '').strip()
     from_id = request.GET.get('from_id', '').strip()
     to_id = request.GET.get('to_id', '').strip()
+    # Only compute the route when the user explicitly clicks "Get Directions"
+    get_directions = bool(request.GET.get('get_directions', ''))
 
     from_node = to_node = path = path_coords = route_error = simplified_segments = floor_visualization = None
     from_candidates = to_candidates = []
 
-    if from_q or from_id or to_q or to_id:
-        from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments, floor_visualization = (
-            _run_route(from_q, from_id, to_q, to_id)
-        )
+    if to_q or to_id:
+        # Always resolve the destination so Panel B can render
+        to_node, to_candidates = _resolve_node(to_q, to_id)
+
+    if from_q or from_id:
+        # Resolve starting point (for display / disambiguation in Panel B)
+        from_node, from_candidates = _resolve_node(from_q, from_id)
+
+    if get_directions:
+        # Full route computation — triggered only by the "Get Directions" button
+        (from_node, from_candidates,
+         to_node, to_candidates,
+         path, path_coords, route_error,
+         simplified_segments, floor_visualization) = _run_route(from_q, from_id, to_q, to_id)
 
     # Auto-select floor: explicit param > destination node floor > start node floor > default "1"
     selected_floor = request.GET.get("floor", "")
@@ -374,6 +423,7 @@ def home(request):
         "map_floors": map_floors,
         "from_floor_data": from_floor_data,
         "to_floor_data": to_floor_data,
+        "uq_map_embed_url": _uq_map_embed_url(to_node),
         "path_fp_coords_json": json.dumps(_get_path_fp_coords(path, BUILDINGS)),
     })
 

@@ -15,12 +15,12 @@
         </div>
     </header>
 
-    <main class="main" id="main-layout">
+    <main class="main{% if path %} route-active{% endif %}" id="main-layout">
 
-        <!-- ══ LEFT OVERLAY PANEL ══ -->
+        <!-- ══ FLOATING OVERLAY PANEL (always present, content changes by state) ══ -->
         <aside class="map-overlay-panel" id="map-search-panel">
 
-            {# ── PANEL A: Destination search (hidden once destination is confirmed or route shown) ── #}
+            {# ── PANEL A: Destination search ── #}
             <section class="floating-search-panel" id="dest-search-panel"
                      {% if to_node or path %}style="display:none"{% endif %}>
                 <form method="get" class="map-search-form" id="dest-search-form">
@@ -115,7 +115,7 @@
                     </div>
 
                     {# Destination info – below the from-field #}
-                    <div class="dest-to-row">
+                    <div class="dest-to-row" id="dest-to-row">
                         <svg class="pin-to dest-pin" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path d="M12 1C7.03 1 3 5.03 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-4.97-4.03-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" fill="#ef4444"/>
                         </svg>
@@ -123,211 +123,73 @@
                             <div class="dest-name">{{ to_node.label }}</div>
                             <div class="dest-meta">{{ to_node.building }} · Floor {{ to_node.floor }}</div>
                         </div>
-                        <a href="?" class="back-icon-btn" aria-label="Clear destination" title="Clear destination">
+                        <button type="button" class="back-icon-btn" id="change-dest-btn"
+                                aria-label="Change destination" title="Change destination">
                             <svg viewBox="0 0 24 24" focusable="false">
                                 <path d="M18 6L6 18M6 6l12 12"/>
                             </svg>
-                        </a>
+                        </button>
+                    </div>
+
+                    {# Hidden row — revealed when user clicks ✕ to change destination #}
+                    <div class="to-change-row" id="to-change-row" style="display:none">
+                        <label class="input-row to-change-input-row" id="to-change-input-row">
+                            <svg class="pin-to" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg"
+                                 aria-hidden="true" style="width:14px;height:18px;flex-shrink:0;justify-self:center;">
+                                <path d="M12 1C7.03 1 3 5.03 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-4.97-4.03-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" fill="#ef4444"/>
+                            </svg>
+                            <input type="text" name="to" id="to-change-input"
+                                   placeholder="Search for a destination" autocomplete="off">
+                        </label>
                     </div>
 
                     {% if route_error %}
                     <div class="error">{{ route_error }}</div>
                     {% endif %}
 
-                    {# Submit button #}
-                    <div class="dest-submit">
-                        <button type="submit" class="btn">Get Directions</button>
+                    {# Submit button — carries get_directions flag so the server knows to compute the route #}
+                    <div class="dest-submit" id="dest-submit-wrap">
+                        <button type="submit" name="get_directions" value="1" class="btn">Get Directions</button>
                     </div>
                 </form>
             </section>
             {% endif %}
 
-            {# ── PANEL C: Route summary card (step list moved to bottom drawer) ── #}
-            {% if path %}
-            {% with path|last as last_node %}
-            <section class="route-summary-card">
-                <a href="?to={{ to_q }}&to_id={{ to_id }}" class="change-route-link">← Back</a>
-                <div class="route-endpoints">
-                    <div class="endpoint-row">
-                        <span class="dot"></span>
-                        <span class="endpoint-label">{{ from_node.label }}</span>
-                    </div>
-                    <div class="route-ep-divider" aria-hidden="true"></div>
-                    <div class="endpoint-row endpoint-to">
-                        <svg class="pin-to" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 1C7.03 1 3 5.03 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-4.97-4.03-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" fill="#ef4444"/>
-                        </svg>
-                        <span class="endpoint-label">{{ last_node.label }}</span>
-                    </div>
-                </div>
-            </section>
-            {% endwith %}
-            {% endif %}
-
         </aside>
 
-        {# ══ MAP AREA: single map (same floor) · split map (different floors) · campus map ══ #}
-
-        {# macro-like include for one floor-plan panel ─ used in both single & split views #}
+        {# ── IN-FLOW ROUTE BAR: full-width strip above maps, only when route is active ── #}
         {% if path %}
-
-        {# ── SAME FLOOR: one building, one floor → single full map ── #}
-        {% if from_floor_data and to_floor_data and from_floor_data.svg_id == to_floor_data.svg_id %}
-        <section class="single-map-view">
-            {% with fp=to_floor_data %}
-            <div class="single-floor-container">
-                {% if fp %}
-                <div class="floor-plan-map{% if fp.floor.real_layout %} real-layout{% endif %}"
-                     style="{% if fp.floor.real_layout %}--fp-aspect: {{ fp.floor.aspect_ratio|default:'2.42 / 1' }};{% endif %}">
-                    <div class="fp-inner">
-                        <svg class="fp-svg" id="fp-svg-{{ fp.svg_id }}"
-                             viewBox="0 0 100 100" preserveAspectRatio="none">
-                            {% if fp.floor.outline_points %}
-                            <polygon class="fp-shell" points="{{ fp.floor.outline_points }}"></polygon>
-                            {% endif %}
-                            {% for corridor in fp.floor.corridors %}
-                            <rect class="fp-corridor"
-                                  x="{{ corridor.x }}" y="{{ corridor.y }}"
-                                  width="{{ corridor.w }}" height="{{ corridor.h }}" rx="0"></rect>
-                            {% endfor %}
-                            {% for wall in fp.floor.walls %}
-                            <line class="fp-wall"
-                                  x1="{{ wall.x1 }}" y1="{{ wall.y1 }}"
-                                  x2="{{ wall.x2 }}" y2="{{ wall.y2 }}"></line>
-                            {% endfor %}
-                        </svg>
-                        {% for room in fp.floor.rooms %}
-                        <div class="fp-room{% if room.type == 'Corridor' %} circulation-node{% endif %}"
-                             style="--rx: {{ room.x }}%; --ry: {{ room.y }}%; --rw: {{ room.w }}%; --rh: {{ room.h }}%;"
-                             data-rtype="{{ room.type|lower }}">
-                            <span class="fp-room-code">{{ room.code }}</span>
-                            <span class="fp-room-name">{{ room.name }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
+        {% with path|last as last_node %}
+        <div class="route-card-bar">
+            <a href="?to={{ to_q }}&to_id={{ to_id }}&from={{ from_q }}&from_id={{ from_id }}"
+               class="change-route-link">← Back</a>
+            <div class="route-bar-endpoints">
+                <div class="endpoint-row">
+                    <span class="dot"></span>
+                    <span class="endpoint-label">{{ from_node.label }}</span>
                 </div>
-                {% else %}
-                <div class="split-no-floorplan">No floor plan available</div>
-                {% endif %}
-            </div>
-            {% endwith %}
-        </section>
-
-        {% else %}
-        {# ── DIFFERENT FLOORS: left = start floor plan · right = destination floor plan ── #}
-        <section class="split-map-view">
-
-            {# LEFT: start floor plan #}
-            <div class="split-panel from-split-panel">
-                <div class="split-panel-header">
-                    <span class="dot split-dot"></span>
-                    <div class="split-panel-info">
-                        <div class="split-panel-title">{{ from_node.label }}</div>
-                        <div class="split-panel-meta">{{ from_node.building }} · Floor {{ from_node.floor }}</div>
-                    </div>
-                </div>
-                <div class="split-floor-container">
-                    {% if from_floor_data %}
-                    {% with fp=from_floor_data %}
-                    <div class="floor-plan-map{% if fp.floor.real_layout %} real-layout{% endif %}"
-                         style="{% if fp.floor.real_layout %}--fp-aspect: {{ fp.floor.aspect_ratio|default:'2.42 / 1' }};{% endif %}">
-                        <div class="fp-inner">
-                            <svg class="fp-svg" id="fp-svg-{{ fp.svg_id }}"
-                                 viewBox="0 0 100 100" preserveAspectRatio="none">
-                                {% if fp.floor.outline_points %}
-                                <polygon class="fp-shell" points="{{ fp.floor.outline_points }}"></polygon>
-                                {% endif %}
-                                {% for corridor in fp.floor.corridors %}
-                                <rect class="fp-corridor"
-                                      x="{{ corridor.x }}" y="{{ corridor.y }}"
-                                      width="{{ corridor.w }}" height="{{ corridor.h }}" rx="0"></rect>
-                                {% endfor %}
-                                {% for wall in fp.floor.walls %}
-                                <line class="fp-wall"
-                                      x1="{{ wall.x1 }}" y1="{{ wall.y1 }}"
-                                      x2="{{ wall.x2 }}" y2="{{ wall.y2 }}"></line>
-                                {% endfor %}
-                            </svg>
-                            {% for room in fp.floor.rooms %}
-                            <div class="fp-room{% if room.type == 'Corridor' %} circulation-node{% endif %}"
-                                 style="--rx: {{ room.x }}%; --ry: {{ room.y }}%; --rw: {{ room.w }}%; --rh: {{ room.h }}%;"
-                                 data-rtype="{{ room.type|lower }}">
-                                <span class="fp-room-code">{{ room.code }}</span>
-                                <span class="fp-room-name">{{ room.name }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endwith %}
-                    {% else %}
-                    <div class="split-no-floorplan">No floor plan available for this location</div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="split-divider"></div>
-
-            {# RIGHT: destination floor plan #}
-            <div class="split-panel to-split-panel">
-                <div class="split-panel-header">
-                    <svg class="pin-to split-pin" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg">
+                <div class="route-ep-divider" aria-hidden="true"></div>
+                <div class="endpoint-row endpoint-to">
+                    <svg class="pin-to" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <path d="M12 1C7.03 1 3 5.03 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-4.97-4.03-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" fill="#ef4444"/>
                     </svg>
-                    <div class="split-panel-info">
-                        <div class="split-panel-title">{{ to_node.label }}</div>
-                        <div class="split-panel-meta">{{ to_node.building }} · Floor {{ to_node.floor }}</div>
-                    </div>
-                </div>
-                <div class="split-floor-container">
-                    {% if to_floor_data %}
-                    {% with fp=to_floor_data %}
-                    <div class="floor-plan-map{% if fp.floor.real_layout %} real-layout{% endif %}"
-                         style="{% if fp.floor.real_layout %}--fp-aspect: {{ fp.floor.aspect_ratio|default:'2.42 / 1' }};{% endif %}">
-                        <div class="fp-inner">
-                            <svg class="fp-svg" id="fp-svg-{{ fp.svg_id }}"
-                                 viewBox="0 0 100 100" preserveAspectRatio="none">
-                                {% if fp.floor.outline_points %}
-                                <polygon class="fp-shell" points="{{ fp.floor.outline_points }}"></polygon>
-                                {% endif %}
-                                {% for corridor in fp.floor.corridors %}
-                                <rect class="fp-corridor"
-                                      x="{{ corridor.x }}" y="{{ corridor.y }}"
-                                      width="{{ corridor.w }}" height="{{ corridor.h }}" rx="0"></rect>
-                                {% endfor %}
-                                {% for wall in fp.floor.walls %}
-                                <line class="fp-wall"
-                                      x1="{{ wall.x1 }}" y1="{{ wall.y1 }}"
-                                      x2="{{ wall.x2 }}" y2="{{ wall.y2 }}"></line>
-                                {% endfor %}
-                            </svg>
-                            {% for room in fp.floor.rooms %}
-                            <div class="fp-room{% if room.type == 'Corridor' %} circulation-node{% endif %}"
-                                 style="--rx: {{ room.x }}%; --ry: {{ room.y }}%; --rw: {{ room.w }}%; --rh: {{ room.h }}%;"
-                                 data-rtype="{{ room.type|lower }}">
-                                <span class="fp-room-code">{{ room.code }}</span>
-                                <span class="fp-room-name">{{ room.name }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endwith %}
-                    {% else %}
-                    <div class="split-no-floorplan">No floor plan available for this location</div>
-                    {% endif %}
+                    <span class="endpoint-label">{{ last_node.label }}</span>
                 </div>
             </div>
+        </div>
+        {% endwith %}
+        {% endif %}
 
-        </section>
-        {% endif %}{# end same/different floor #}
-
-        {% else %}
-        {# ── CAMPUS MAP (shown when no active route) ── #}
+        {# ══ MAP AREA: campus map always shown; JS marks start/dest when a route is active ══ #}
         <section class="map-wrap">
 
             <div class="map-toolbar">
                 <form id="map-ctrl-form" method="get" style="display:flex; gap:10px;">
                     {% if to_q %}<input type="hidden" name="to" value="{{ to_q }}">{% endif %}
                     {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
+                    {% if from_q %}<input type="hidden" name="from" value="{{ from_q }}">{% endif %}
+                    {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
+                    {% if path %}<input type="hidden" name="get_directions" value="1">{% endif %}
 
                     <input type="hidden" name="campus" value="st-lucia">
                     <span class="map-select" style="cursor:default;pointer-events:none;opacity:0.85;background-image:none;padding:11px 14px;text-align:center;display:inline-block;">St Lucia</span>
@@ -342,31 +204,45 @@
                 </form>
             </div>
 
+            {% if path and uq_map_embed_url %}
+            <div class="uq-map-embed">
+                <iframe
+                    src="{{ uq_map_embed_url }}"
+                    title="UQ map for {{ to_node.label }}"
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>
+            {% else %}
             {% include "maps/partials/campus_map.html" %}
+            {% endif %}
 
         </section>
-        {% endif %}
 
     </main>
 
-    {# ══ BOTTOM DRAWER: step-by-step directions (shown when route is active) ══ #}
+    {# ══ BOTTOM DRAWER: step-by-step directions — fixed 20vh, show/hide only ══ #}
     {% if path %}
     {% with path|last as last_node %}
-    <div class="route-drawer" id="route-drawer" aria-label="Route directions">
-        {# ── Handle + peek summary ── #}
-        <button class="drawer-handle-wrap" id="drawer-handle" type="button" aria-expanded="false"
-                aria-label="Toggle directions drawer">
-            <div class="drawer-pill" aria-hidden="true"></div>
-            <div class="drawer-peek">
-                <div class="drawer-peek-left">
-                    <span class="drawer-step-count">{{ simplified_segments|length }} step{{ simplified_segments|length|pluralize }}</span>
-                    <span class="drawer-peek-route">{{ from_node.label }} → {{ last_node.label }}</span>
-                </div>
-                <span class="drawer-chevron" aria-hidden="true" id="drawer-chevron">&#8964;</span>
-            </div>
-        </button>
+    <div class="route-drawer is-open" id="route-drawer" aria-label="Route directions">
+        {# ── Purple pill handle — sits at the very top, always visible ── #}
+        <div class="drawer-pill-wrap">
+            <button class="drawer-toggle-pill" id="drawer-toggle-pill" type="button" aria-label="Toggle directions">
+                <svg class="pill-chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 9l-6 6-6-6"/>
+                </svg>
+                <span class="pill-label">Close</span>
+            </button>
+        </div>
+        {# ── Header row: step count + close button (frozen, never scrolls) ── #}
+        <div class="drawer-header">
+            <span class="drawer-step-count">
+                {{ simplified_segments|length }} step{{ simplified_segments|length|pluralize }}
+            </span>
+            <span class="drawer-route-label">{{ from_node.label }} → {{ last_node.label }}</span>
+        </div>
 
-        {# ── Scrollable step list ── #}
+        {# ── Scrollable step list (scrolls independently of the frozen header) ── #}
         <div class="drawer-scroll" id="drawer-scroll">
             {% if simplified_segments %}
             {% for segment in simplified_segments %}
@@ -415,13 +291,7 @@
         if (idInput) idInput.value = id;
         if (row)     row.classList.add('confirmed-row');
         if (drop)    drop.style.display = 'none';
-
-        // Auto-submit once the from-id is resolved
-        var fromId = document.getElementById('from-id-input');
-        if (fromId && fromId.value) {
-            var form = document.getElementById('from-form');
-            if (form) form.submit();
-        }
+        // No auto-submit: user must click "Get Directions" to trigger the route
     }
 
     document.querySelectorAll('.cand-btn[data-field]').forEach(function (btn) {
@@ -482,89 +352,91 @@
         });
     }
 
-    // ── Bottom drawer (route steps) ──────────────────────────────────────────
+    // ── Change-destination: ✕ swaps the confirmed dest row for a live search input ──
     (function () {
-        var drawer  = document.getElementById('route-drawer');
-        var handle  = document.getElementById('drawer-handle');
-        var chevron = document.getElementById('drawer-chevron');
-        if (!drawer || !handle) return;
+        var changeDestBtn  = document.getElementById('change-dest-btn');
+        var destToRow      = document.getElementById('dest-to-row');
+        var toChangeRow    = document.getElementById('to-change-row');
+        var toChangeInput  = document.getElementById('to-change-input');
+        var destSubmitWrap = document.getElementById('dest-submit-wrap');
+        var toIdInput      = document.querySelector('input[name="to_id"]');
+        if (!changeDestBtn || !destToRow || !toChangeRow) return;
 
-        var PEEK_HEIGHT = 64;   // px visible when collapsed — keep in sync with CSS transform
-        var isOpen      = false;
-        var dragging    = false;
-        var pointerStartY  = 0;
-        var translateStart = 0;
-
-        function drawerH() { return drawer.offsetHeight; }
-        function peekTranslate() { return drawerH() - PEEK_HEIGHT; }
-
-        function applyTranslate(y) {
-            drawer.style.transform = 'translateY(' + Math.max(0, y) + 'px)';
-        }
-
-        function open(animate) {
-            isOpen = true;
-            if (animate !== false) drawer.style.transition = '';
-            drawer.classList.add('is-open');
-            drawer.style.transform = '';
-            handle.setAttribute('aria-expanded', 'true');
-            if (chevron) chevron.style.transform = 'rotate(180deg)';
-        }
-
-        function close(animate) {
-            isOpen = false;
-            if (animate !== false) drawer.style.transition = '';
-            drawer.classList.remove('is-open');
-            drawer.style.transform = '';
-            handle.setAttribute('aria-expanded', 'false');
-            if (chevron) chevron.style.transform = '';
-        }
-
-        // Toggle on click (not drag)
-        handle.addEventListener('click', function () {
-            if (!dragging) { isOpen ? close() : open(); }
+        changeDestBtn.addEventListener('click', function () {
+            // Hide the confirmed destination display
+            destToRow.style.display = 'none';
+            // Clear the resolved to_id so the server does a fresh text search
+            if (toIdInput) toIdInput.value = '';
+            // Hide Get Directions until a new destination is confirmed
+            if (destSubmitWrap) destSubmitWrap.style.display = 'none';
+            // Show the destination search input
+            toChangeRow.style.display = '';
+            if (toChangeInput) toChangeInput.focus();
         });
 
-        // Keyboard support
-        handle.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                isOpen ? close() : open();
+        // Pressing Enter in the destination input submits the form *without* the
+        // get_directions flag — server resolves the new destination then shows Panel B.
+        if (toChangeInput) {
+            toChangeInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    // form.submit() sends no button name/value → no get_directions flag
+                    this.form.submit();
+                }
+            });
+        }
+    }());
+
+    // ── Steps drawer: show / hide only (fixed 20vh, defaults open) ──────────
+    (function () {
+        var drawer      = document.getElementById('route-drawer');
+        var togglePill  = document.getElementById('drawer-toggle-pill');
+        var pillLabel   = togglePill && togglePill.querySelector('.pill-label');
+        var pillChevron = togglePill && togglePill.querySelector('.pill-chevron');
+        if (!drawer) return;
+
+        // Drawer starts open (is-open class is set in the template)
+        var isOpen = true;
+
+        function updatePill() {
+            if (!togglePill) return;
+            // ∨ chevron (no rotation) = "click to close"  |  ∧ chevron (rotate 180°) = "click to open"
+            if (isOpen) {
+                if (pillLabel)   pillLabel.textContent       = 'Close';
+                if (pillChevron) pillChevron.style.transform = '';              // ∨ push down to close
+            } else {
+                if (pillLabel)   pillLabel.textContent       = 'Steps';
+                if (pillChevron) pillChevron.style.transform = 'rotate(180deg)'; // ∧ pull up to open
             }
-        });
+        }
 
-        // Drag
-        handle.addEventListener('pointerdown', function (e) {
-            dragging       = false;
-            pointerStartY  = e.clientY;
-            translateStart = isOpen ? 0 : peekTranslate();
-            handle.setPointerCapture(e.pointerId);
-            drawer.style.transition = 'none';
-        });
+        function showDrawer() {
+            isOpen = true;
+            drawer.classList.add('is-open');
+            updatePill();
+        }
 
-        handle.addEventListener('pointermove', function (e) {
-            var dy = e.clientY - pointerStartY;
-            if (Math.abs(dy) > 6) dragging = true;
-            if (!dragging) return;
-            var clamped = Math.min(peekTranslate(), Math.max(0, translateStart + dy));
-            applyTranslate(clamped);
-        });
+        function hideDrawer() {
+            isOpen = false;
+            drawer.classList.remove('is-open');
+            updatePill();
+        }
 
-        handle.addEventListener('pointerup', function (e) {
-            drawer.style.transition = '';
-            if (!dragging) return;
-            var dy = e.clientY - pointerStartY;
-            if      (dy < -50)  open();
-            else if (dy >  50)  close();
-            else                isOpen ? open(false) : close(false);
-            dragging = false;
-        });
+        // Sync pill label with the initial open state
+        updatePill();
 
-        handle.addEventListener('pointercancel', function () {
-            drawer.style.transition = '';
-            dragging = false;
-            isOpen ? open(false) : close(false);
-        });
+        // Purple toggle pill → open / close
+        if (togglePill) {
+            togglePill.addEventListener('click', function () {
+                isOpen ? hideDrawer() : showDrawer();
+            });
+            togglePill.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    isOpen ? hideDrawer() : showDrawer();
+                }
+            });
+        }
     }());
 
     // ── Drag-to-pan campus map ────────────────────────────────────────────────
@@ -612,51 +484,107 @@
 
 }());
 
-// ── Route path overlay on split-view floor plan SVGs ─────────────────────────
+// ── Route markers on campus map ───────────────────────────────────────────────
+{% if path %}
 (function () {
-    var fpCoords = {{ path_fp_coords_json|safe }};
-    if (!fpCoords || !Object.keys(fpCoords).length) return;
-
-    var NS = 'http://www.w3.org/2000/svg';
-
-    function makeSvgEl(tag, attrs) {
-        var el = document.createElementNS(NS, tag);
-        Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
-        return el;
+    function roomCode(label) {
+        // Labels are "CODE - Room Name"; extract the code before the first " - "
+        return label.split(' - ')[0].trim().toUpperCase();
     }
 
-    Object.keys(fpCoords).forEach(function (groupKey) {
-        var pts = fpCoords[groupKey];
-        if (!pts || pts.length === 0) return;
+    function buildingNumber(building) {
+        var match = (building || '').match(/\b(\d+)\b/);
+        return match ? match[1] : '';
+    }
 
-        var svgEl = document.getElementById('fp-svg-' + groupKey);
-        if (!svgEl) return;
+    function getRoomElement(building, code) {
+        var bNum = buildingNumber(building);
+        var ids = [
+            'b' + bNum + '-room-' + code,
+            'room-' + code
+        ];
 
-        if (pts.length >= 2) {
-            var pointsStr = pts.map(function (p) { return p.x + ',' + p.y; }).join(' ');
-            svgEl.appendChild(makeSvgEl('polyline', {
-                points: pointsStr,
-                fill: 'none',
-                stroke: '#6B21A8',
-                'stroke-width': '3.5',
-                'stroke-linecap': 'round',
-                'stroke-linejoin': 'round',
-                opacity: '0.88',
-            }));
+        for (var i = 0; i < ids.length; i += 1) {
+            var el = document.getElementById(ids[i]);
+            if (el) return el;
+        }
+        return null;
+    }
+
+    function rectBounds(el) {
+        if (el.tagName.toLowerCase() !== 'rect') return null;
+        var x = parseFloat(el.getAttribute('x') || 0);
+        var y = parseFloat(el.getAttribute('y') || 0);
+        var w = parseFloat(el.getAttribute('width') || 0);
+        var h = parseFloat(el.getAttribute('height') || 0);
+        return { x: x, y: y, w: w, h: h, cx: x + w / 2, cy: y + h / 2 };
+    }
+
+    function addPin(svg, bounds, color, iconType) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var g = document.createElementNS(NS, 'g');
+        g.setAttribute('class', 'svg-route-marker-pin');
+        g.setAttribute('transform', 'translate(' + bounds.cx + ' ' + (bounds.cy - 5.6) + ') scale(0.18)');
+
+        var pin = document.createElementNS(NS, 'path');
+        pin.setAttribute('d', 'M0 -42 C-15 -42 -27 -30 -27 -15 C-27 8 0 42 0 42 C0 42 27 8 27 -15 C27 -30 15 -42 0 -42 Z');
+        pin.setAttribute('fill', color);
+        pin.setAttribute('stroke', '#ffffff');
+        pin.setAttribute('stroke-width', '5');
+        g.appendChild(pin);
+
+        var circle = document.createElementNS(NS, 'circle');
+        circle.setAttribute('cx', '0');
+        circle.setAttribute('cy', '-15');
+        circle.setAttribute('r', '14');
+        circle.setAttribute('fill', '#ffffff');
+        g.appendChild(circle);
+
+        if (iconType === 'dest') {
+            var dot = document.createElementNS(NS, 'circle');
+            dot.setAttribute('cx', '0');
+            dot.setAttribute('cy', '-15');
+            dot.setAttribute('r', '5.5');
+            dot.setAttribute('fill', color);
+            g.appendChild(dot);
+        } else {
+            var startDot = document.createElementNS(NS, 'circle');
+            startDot.setAttribute('cx', '0');
+            startDot.setAttribute('cy', '-15');
+            startDot.setAttribute('r', '6.5');
+            startDot.setAttribute('fill', color);
+            g.appendChild(startDot);
         }
 
-        pts.forEach(function (p, idx) {
-            var isStart = idx === 0;
-            var isEnd   = idx === pts.length - 1;
-            svgEl.appendChild(makeSvgEl('circle', {
-                cx: p.x, cy: p.y, r: isStart || isEnd ? '4' : '3',
-                fill:           isStart ? '#22c55e' : isEnd ? '#ef4444' : 'white',
-                stroke:         '#6B21A8',
-                'stroke-width': '1.5',
-            }));
-        });
-    });
+        svg.appendChild(g);
+    }
+
+    function markRoom(building, code, cssClass, frameColor, pinColor, iconType) {
+        var el = getRoomElement(building, code);
+        if (!el) return;
+        el.classList.add(cssClass);
+
+        var svg = el.closest('svg');
+        var bounds = rectBounds(el);
+        if (!svg || !bounds) return;
+
+        var NS = 'http://www.w3.org/2000/svg';
+        var frame = document.createElementNS(NS, 'rect');
+        frame.setAttribute('class', 'svg-route-marker-frame');
+        frame.setAttribute('x', bounds.x);
+        frame.setAttribute('y', bounds.y);
+        frame.setAttribute('width', bounds.w);
+        frame.setAttribute('height', bounds.h);
+        frame.setAttribute('stroke', frameColor);
+        svg.appendChild(frame);
+
+        addPin(svg, bounds, pinColor, iconType);
+    }
+
+    markRoom("{{ from_node.building|escapejs }}", roomCode("{{ from_node.label|escapejs }}"), 'svg-route-start', '#5aa354', '#5aa354', 'start');
+    markRoom("{{ to_node.building|escapejs }}", roomCode("{{ to_node.label|escapejs }}"), 'svg-route-dest', '#dc2626', '#dc2626', 'dest');
 }());
+{% endif %}
 </script>
 </body>
 </html>
