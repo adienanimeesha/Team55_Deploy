@@ -556,69 +556,111 @@
         });
     }
 
-    function routeFeatureCollection() {
-        if (!routeCoords || routeCoords.length < 2) {
-            return null;
-        }
+    // ── Floor-aware route drawing ────────────────────────────────────────────
+    // When start and destination are on different floors the map auto-shows
+    // the destination's floor.  We draw:
+    //   • solid purple line  — portion on the destination floor
+    //   • dashed faded line  — portion on the start floor (before the transition)
 
+    function _makeGeoJson(coordsArr) {
         return {
             type: 'FeatureCollection',
             features: [{
-                type: 'Feature',
-                properties: {},
+                type: 'Feature', properties: {},
                 geometry: {
                     type: 'LineString',
-                    coordinates: routeCoords.map(function (coord) {
-                        return [coord.lng, coord.lat];
-                    })
+                    coordinates: coordsArr.map(function (c) { return [c.lng, c.lat]; })
                 }
             }]
         };
     }
 
-    function addRouteLayer(map) {
-        var geojson = routeFeatureCollection();
-        if (!geojson || !map.addSource || !map.addLayer) return;
+    function _drawSegment(map, id, coordsArr, dashed) {
+        if (!coordsArr || coordsArr.length < 2) return;
+        var geojson = _makeGeoJson(coordsArr);
+        if (map.getSource && map.getSource(id)) {
+            map.getSource(id).setData(geojson);
+            return;
+        }
+        map.addSource(id, { type: 'geojson', data: geojson });
 
-        if (map.getSource && map.getSource('uq-route')) {
-            map.getSource('uq-route').setData(geojson);
+        if (dashed) {
+            // Soft halo
+            map.addLayer({
+                id: id + '-glow', type: 'line', source: id,
+                layout: { 'line-cap': 'butt', 'line-join': 'round' },
+                paint: { 'line-color': '#c0b0d8', 'line-width': 8,
+                         'line-opacity': 0.35, 'line-dasharray': [2.5, 3.5] }
+            });
+            // Dashed line
+            map.addLayer({
+                id: id + '-line', type: 'line', source: id,
+                layout: { 'line-cap': 'butt', 'line-join': 'round' },
+                paint: { 'line-color': '#7a3fa8', 'line-width': 4,
+                         'line-opacity': 0.5, 'line-dasharray': [2.5, 3.5] }
+            });
+        } else {
+            // White glow
+            map.addLayer({
+                id: id + '-glow', type: 'line', source: id,
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: { 'line-color': '#ffffff', 'line-width': 10, 'line-opacity': 0.82 }
+            });
+            // Solid UQ-purple line
+            map.addLayer({
+                id: id + '-line', type: 'line', source: id,
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: { 'line-color': '#51247A', 'line-width': 6, 'line-opacity': 0.94 }
+            });
+        }
+    }
+
+    function addRouteLayer(map) {
+        if (!routeCoords || routeCoords.length < 2 || !map.addSource || !map.addLayer) return;
+
+        var destFloor = toPoint  && toPoint.floor  != null ? String(toPoint.floor)  : '';
+        var fromFloor = fromPoint && fromPoint.floor != null ? String(fromPoint.floor) : '';
+        var multiFloor = destFloor && fromFloor && destFloor !== fromFloor;
+
+        // Only split when we have per-coordinate floor data (dijkstra or MazeMap with zLevel)
+        var hasFloorData = multiFloor &&
+            routeCoords.some(function (c) { return c.floor != null; });
+
+        if (!hasFloorData) {
+            // Same floor or no floor data → single solid line
+            _drawSegment(map, 'uq-route', routeCoords, false);
             return;
         }
 
-        map.addSource('uq-route', {
-            type: 'geojson',
-            data: geojson
-        });
+        // Split at the first point that reaches the destination floor.
+        // Everything before (start-floor portion) → dashed.
+        // Everything from the transition point onwards → solid.
+        var dashedCoords = [];
+        var solidCoords  = [];
+        var inDest = false;
 
-        map.addLayer({
-            id: 'uq-route-glow',
-            type: 'line',
-            source: 'uq-route',
-            layout: {
-                'line-cap': 'round',
-                'line-join': 'round'
-            },
-            paint: {
-                'line-color': '#ffffff',
-                'line-width': 10,
-                'line-opacity': 0.82
+        for (var i = 0; i < routeCoords.length; i++) {
+            var c  = routeCoords[i];
+            var cf = c.floor != null ? String(c.floor) : null;
+            if (!inDest) {
+                dashedCoords.push(c);
+                if (cf === destFloor) {
+                    inDest = true;
+                    solidCoords.push(c);   // shared transition point keeps the lines connected
+                }
+            } else {
+                solidCoords.push(c);
             }
-        });
+        }
 
-        map.addLayer({
-            id: 'uq-route-line',
-            type: 'line',
-            source: 'uq-route',
-            layout: {
-                'line-cap': 'round',
-                'line-join': 'round'
-            },
-            paint: {
-                'line-color': '#51247A',
-                'line-width': 6,
-                'line-opacity': 0.94
-            }
-        });
+        if (solidCoords.length >= 2) {
+            // Normal case: we found the floor transition
+            _drawSegment(map, 'uq-route-dashed', dashedCoords, true);
+            _drawSegment(map, 'uq-route-solid',  solidCoords,  false);
+        } else {
+            // Transition not found in coord data — draw everything solid as fallback
+            _drawSegment(map, 'uq-route', routeCoords, false);
+        }
     }
 
     function fitRoute(map) {

@@ -202,6 +202,66 @@ def _get_path_fp_coords(path, buildings):
     return result
 
 
+def _annotate_mazemap_route_floors(features, from_floor, to_floor):
+    """
+    Build a flat coordinate list from MazeMap GeoJSON features, ensuring every
+    coordinate carries a 'floor' label so the frontend can split the route line
+    into a solid portion (destination floor) and a dashed portion (start floor).
+
+    Priority order for the floor label of each feature's coordinates:
+      1. Explicit zLevel / level in the feature's properties
+      2. Third value of the coordinate tuple  (some APIs return [lon, lat, zLevel])
+      3. Positional inference: first feature → from_floor, last feature → to_floor
+         (MazeMap always emits separate features per floor segment, in route order)
+    """
+    def _zlevel(feat):
+        props = feat.get("properties") or {}
+        for key in ("zLevel", "z_level", "level", "zLevelId", "z"):
+            val = props.get(key)
+            if val is not None:
+                try:
+                    return str(int(round(float(val))))
+                except (TypeError, ValueError):
+                    return str(val)
+        return None
+
+    coords = []
+    seen = set()
+    n = len(features)
+
+    for fi, feature in enumerate(features):
+        z = _zlevel(feature)
+        if z is None:
+            # Positional fallback: first feature is on the start floor,
+            # last feature is on the destination floor.
+            if fi == 0:
+                z = str(from_floor)
+            elif fi == n - 1:
+                z = str(to_floor)
+            # Middle features (rare; e.g. a bridge level): leave as None →
+            # treated as "not dest floor" → dashed in the frontend.
+
+        for coord_vals in (feature.get("geometry") or {}).get("coordinates", []):
+            lon, lat = coord_vals[0], coord_vals[1]
+            effective_z = z
+            if effective_z is None and len(coord_vals) >= 3:
+                try:
+                    effective_z = str(int(round(float(coord_vals[2]))))
+                except (TypeError, ValueError):
+                    effective_z = str(coord_vals[2])
+
+            key = (round(lat, 7), round(lon, 7))
+            if key in seen:
+                continue
+            seen.add(key)
+            entry = {"lat": lat, "lng": lon}
+            if effective_z is not None:
+                entry["floor"] = effective_z
+            coords.append(entry)
+
+    return coords
+
+
 def _run_route(from_q, from_id, to_q, to_id):
     from_node, from_candidates = _resolve_node(from_q, from_id)
     to_node, to_candidates = _resolve_node(to_q, to_id)
@@ -220,7 +280,16 @@ def _run_route(from_q, from_id, to_q, to_id):
                     simplified_segments = [{
                         "description": f'Follow the MazeMap route to "{to_node.label}".',
                     }]
-                coords = mazemap_route["coordinates"]
+                # For multi-floor routes, re-derive coordinates with per-coord
+                # floor labels so the frontend can draw the start-floor portion
+                # as dashed.  Falls back to the pre-flattened list when the
+                # route stays on one floor.
+                if from_node.floor and to_node.floor and from_node.floor != to_node.floor:
+                    coords = _annotate_mazemap_route_floors(
+                        mazemap_route["features"], from_node.floor, to_node.floor
+                    )
+                else:
+                    coords = mazemap_route["coordinates"]
                 if len(coords) >= 2:
                     path_coords = json.dumps(coords)
             except MazeMapRouteError:
@@ -264,7 +333,7 @@ def _run_route(from_q, from_id, to_q, to_id):
                         })
                 
                 coords = [
-                    {'lat': n.lat, 'lng': n.lng, 'label': n.label}
+                    {'lat': n.lat, 'lng': n.lng, 'label': n.label, 'floor': n.floor}
                     for n in path if n.lat is not None and n.lng is not None
                 ]
                 if len(coords) >= 2:
