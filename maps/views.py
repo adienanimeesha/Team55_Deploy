@@ -266,6 +266,7 @@ def _run_route(from_q, from_id, to_q, to_id):
     from_node, from_candidates = _resolve_node(from_q, from_id)
     to_node, to_candidates = _resolve_node(to_q, to_id)
     path = path_coords = route_error = simplified_segments = floor_visualization = None
+    walking_minutes = None
 
     if from_node and to_node:
         source_poi = node_poi_id(from_node)
@@ -275,6 +276,7 @@ def _run_route(from_q, from_id, to_q, to_id):
             try:
                 mazemap_route = get_route(source_poi, target_poi)
                 path = [from_node, to_node]
+                walking_minutes = mazemap_route.get("walking_minutes")
                 simplified_segments = mazemap_route["directions"]
                 if not simplified_segments:
                     simplified_segments = [{
@@ -302,28 +304,26 @@ def _run_route(from_q, from_id, to_q, to_id):
             else:
                 # Generate simplified path segments
                 simplified_segments = simplify_path(path, angle_threshold=15.0)
-                
+
                 # Generate floor-based visualization
                 if simplified_segments:
                     floor_segments = group_segments_by_floor(simplified_segments)
                     floor_order = get_floor_order(simplified_segments)
-                    
+
                     floor_visualization = []
                     for i, floor_num in enumerate(floor_order):
                         floor_label = f"Floor {floor_num}"
                         segments = floor_segments.get(floor_label, [])
-                        
-                        # Generate SVG overlay for this floor
+
                         svg_overlay = segments_to_svg(segments)
-                        
-                        # Get floor transitions (stairs/elevators to next floor)
+
                         next_floor_transition = None
                         if i < len(floor_order) - 1:
                             next_floor = f"Floor {floor_order[i + 1]}"
                             next_floor_transition = create_floor_transition_info(
                                 floor_label, next_floor, simplified_segments
                             )
-                        
+
                         floor_visualization.append({
                             'floor': floor_label,
                             'floor_num': floor_num,
@@ -331,7 +331,7 @@ def _run_route(from_q, from_id, to_q, to_id):
                             'svg_overlay': svg_overlay,
                             'next_transition': next_floor_transition
                         })
-                
+
                 coords = [
                     {'lat': n.lat, 'lng': n.lng, 'label': n.label, 'floor': n.floor}
                     for n in path if n.lat is not None and n.lng is not None
@@ -343,7 +343,9 @@ def _run_route(from_q, from_id, to_q, to_id):
             _missing_error(from_q, from_node, from_candidates)
             or _missing_error(to_q, to_node, to_candidates)
         )
-    return from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments, floor_visualization
+    return (from_node, from_candidates, to_node, to_candidates,
+            path, path_coords, route_error, simplified_segments,
+            floor_visualization, walking_minutes)
 
 
 def _get_node_floor_data(node, buildings):
@@ -428,6 +430,7 @@ def home(request):
 
     from_node = to_node = path = path_coords = route_error = simplified_segments = floor_visualization = None
     from_candidates = to_candidates = []
+    walking_minutes = None
 
     if to_q or to_id:
         # Always resolve the destination so Panel B can render
@@ -442,7 +445,8 @@ def home(request):
         (from_node, from_candidates,
          to_node, to_candidates,
          path, path_coords, route_error,
-         simplified_segments, floor_visualization) = _run_route(from_q, from_id, to_q, to_id)
+         simplified_segments, floor_visualization,
+         walking_minutes) = _run_route(from_q, from_id, to_q, to_id)
 
     # Auto-select floor: explicit param > destination node floor > start node floor > default "1"
     selected_floor = request.GET.get("floor", "")
@@ -503,6 +507,7 @@ def home(request):
         "to_floor_data": to_floor_data,
         "uq_map_embed_url": _uq_map_embed_url(to_node or from_node, selected_floor),
         "path_fp_coords_json": json.dumps(_get_path_fp_coords(path, BUILDINGS)),
+        "walking_minutes": walking_minutes,
     })
 
 
@@ -539,3 +544,8 @@ def building_detail(request, building_id):
 def reminders(request):
     """Serve the smart reminders app"""
     return render(request, "maps/index.html")
+
+
+def onboarding(request):
+    """Welcome / onboarding flow (3 steps)."""
+    return render(request, "maps/onboarding.html")

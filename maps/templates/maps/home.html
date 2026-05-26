@@ -178,6 +178,9 @@
                     <span class="endpoint-label">{{ last_node.label }}</span>
                 </div>
             </div>
+            {% if walking_minutes %}
+            <div class="route-time-badge">~{{ walking_minutes }} min walk</div>
+            {% endif %}
         </div>
         {% endwith %}
         {% endif %}
@@ -275,7 +278,274 @@
     {% endwith %}
     {% endif %}
 
+    {# ══ DEPARTURE REMINDER CARD (slides in from top, swipe to dismiss) ══ #}
+    <div class="reminder-card" id="reminder-card" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="reminder-inner">
+            <span class="reminder-bell" aria-hidden="true">🔔</span>
+            <div class="reminder-body">
+                <div class="reminder-title" id="reminder-title">Time to head out!</div>
+                <div class="reminder-meta"  id="reminder-meta"></div>
+            </div>
+            <button class="reminder-close" id="reminder-close" type="button" aria-label="Dismiss reminder">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <a class="reminder-dir-btn" id="reminder-dir-btn" href="#">Get Directions →</a>
+        <p class="reminder-swipe-hint">← swipe to dismiss →</p>
+    </div>
+
 </div>
+
+<style>
+/* ── Reminder card ── */
+.reminder-card {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translate(-50%, calc(-100% - 100px));
+    width: min(400px, calc(100vw - 24px));
+    background: #fff;
+    border-radius: 20px;
+    border-left: 5px solid #51247A;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+    padding: 16px 18px 12px;
+    z-index: 300;
+    transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity   0.42s ease;
+    opacity: 0;
+    pointer-events: none;
+    user-select: none;
+    touch-action: pan-y;
+}
+.reminder-card.visible {
+    transform: translate(-50%, 0);
+    opacity: 1;
+    pointer-events: auto;
+}
+.reminder-card.fly-left  { transform: translate(calc(-150vw));  opacity: 0; transition: transform 0.32s ease-in, opacity 0.32s ease-in; }
+.reminder-card.fly-right { transform: translate(calc(100vw));   opacity: 0; transition: transform 0.32s ease-in, opacity 0.32s ease-in; }
+.reminder-card.no-transition { transition: none !important; }
+
+.reminder-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.reminder-bell {
+    font-size: 24px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.reminder-body { flex: 1; min-width: 0; }
+.reminder-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #2d2926;
+    line-height: 1.25;
+}
+.reminder-meta {
+    font-size: 12px;
+    color: #7a7068;
+    margin-top: 3px;
+    line-height: 1.4;
+}
+.reminder-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #aaa;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: color 0.15s;
+}
+.reminder-close:hover { color: #51247A; }
+.reminder-dir-btn {
+    display: block;
+    margin-top: 12px;
+    background: #51247A;
+    color: #fff;
+    text-decoration: none;
+    text-align: center;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 800;
+    font-family: Arial, sans-serif;
+    transition: background 0.15s;
+}
+.reminder-dir-btn:hover { background: #3d1a5e; }
+.reminder-swipe-hint {
+    text-align: center;
+    font-size: 10px;
+    color: #bbb;
+    margin-top: 8px;
+    letter-spacing: 0.04em;
+}
+/* walking time badge in route bar */
+.route-time-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.15);
+    border-radius: 999px;
+    padding: 4px 10px;
+    white-space: nowrap;
+    align-self: center;
+    margin-left: auto;
+}
+</style>
+
+<script>
+/* ── Departure Reminder System ──────────────────────────────────────────── */
+(function () {
+    var card     = document.getElementById('reminder-card');
+    var titleEl  = document.getElementById('reminder-title');
+    var metaEl   = document.getElementById('reminder-meta');
+    var dirBtn   = document.getElementById('reminder-dir-btn');
+    var closeBtn = document.getElementById('reminder-close');
+    if (!card) return;
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function simNow() {
+        var offset = parseInt(localStorage.getItem('uq_sim_offset_min') || '0', 10);
+        return new Date(Date.now() + offset * 60000);
+    }
+
+    function totalMin(h, m) { return h * 60 + m; }
+
+    // ── Show / dismiss ───────────────────────────────────────────────────────
+    var currentClass = null;
+
+    function showCard(cls) {
+        currentClass = cls;
+        titleEl.textContent = 'Time to head to ' + cls.code + '!';
+        metaEl.textContent  = cls.building + ' · Room ' + cls.room
+            + ' · ~' + cls.walk_min + ' min walk';
+        dirBtn.href = '/?to=' + encodeURIComponent(cls.to)
+            + (cls.from ? '&from=' + encodeURIComponent(cls.from) : '');
+        card.classList.add('visible');
+    }
+
+    function dismissCard(direction) {
+        if (!card.classList.contains('visible')) return;
+        card.classList.remove('visible');
+        card.classList.add(direction === 'right' ? 'fly-right' : 'fly-left');
+        // Mark this class's reminder as shown for this session
+        if (currentClass) {
+            var key = currentClass.time_h + ':' + currentClass.time_m;
+            try { sessionStorage.setItem('uq_reminded_' + key, '1'); } catch (e) { console.warn(e); }
+        }
+        setTimeout(function () {
+            card.classList.remove('fly-left', 'fly-right');
+            currentClass = null;
+        }, 400);
+    }
+
+    closeBtn.addEventListener('click', function () { dismissCard('left'); });
+    dirBtn.addEventListener('click',   function () { dismissCard('right'); });
+
+    // ── Swipe to dismiss (pointer events — works for both touch & mouse) ─────
+    var dragStartX = 0, dragCurrentX = 0, isDragging = false;
+
+    card.addEventListener('pointerdown', function (e) {
+        if (e.target.closest('a, button')) return;
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragCurrentX = e.clientX;
+        card.classList.add('no-transition');
+        card.setPointerCapture(e.pointerId);
+    });
+
+    card.addEventListener('pointermove', function (e) {
+        if (!isDragging) return;
+        dragCurrentX = e.clientX;
+        var delta = dragCurrentX - dragStartX;
+        // Card is centred with translate(-50%, 0); add horizontal drag offset
+        card.style.transform = 'translate(calc(-50% + ' + delta + 'px), 0)';
+        card.style.opacity   = String(Math.max(0, 1 - Math.abs(delta) / 200));
+    });
+
+    card.addEventListener('pointerup', function (e) {
+        if (!isDragging) return;
+        isDragging = false;
+        card.classList.remove('no-transition');
+        card.style.transform = '';
+        card.style.opacity   = '';
+        var delta = dragCurrentX - dragStartX;
+        if (Math.abs(delta) > 80) {
+            dismissCard(delta > 0 ? 'right' : 'left');
+        }
+        // else: snap back (transition re-applied, visible class keeps it at 0)
+    });
+
+    card.addEventListener('pointercancel', function () {
+        isDragging = false;
+        card.classList.remove('no-transition');
+        card.style.transform = '';
+        card.style.opacity   = '';
+    });
+
+    // ── Update localStorage walk time when a real route result is shown ──────
+    {% if walking_minutes and to_q and from_q %}
+    (function () {
+        try {
+            var raw = localStorage.getItem('uq_schedule');
+            if (!raw) return;
+            var sched = JSON.parse(raw);
+            var toQ   = '{{ to_q|escapejs }}';
+            var fromQ = '{{ from_q|escapejs }}';
+            var wMin  = {{ walking_minutes }};
+            sched.classes.forEach(function (cls) {
+                if (cls.to === toQ && cls.from === fromQ) {
+                    cls.walk_min = wMin;
+                }
+            });
+            localStorage.setItem('uq_schedule', JSON.stringify(sched));
+        } catch (lsErr) { console.warn('schedule update failed', lsErr); }
+    }());
+    {% endif %}
+
+    // ── Reminder scheduler ───────────────────────────────────────────────────
+    function checkReminders() {
+        if (localStorage.getItem('uq_reminders') !== '1') return;
+        var raw = localStorage.getItem('uq_schedule');
+        if (!raw) return;
+        var sched;
+        try { sched = JSON.parse(raw); } catch (parseErr) { console.warn(parseErr); return; }
+
+        var now        = simNow();
+        var nowMin     = totalMin(now.getHours(), now.getMinutes());
+
+        for (var i = 0; i < sched.classes.length; i++) {
+            var cls = sched.classes[i];
+            // Remind at: class_time − walk_min − 5 min buffer
+            var classMin  = totalMin(cls.time_h, cls.time_m);
+            var remindMin = classMin - cls.walk_min - 5;
+            // Only within the remind window and before the class starts
+            if (nowMin < remindMin || nowMin >= classMin) continue;
+            // Skip if already reminded this session
+            var key = cls.time_h + ':' + cls.time_m;
+            try { if (sessionStorage.getItem('uq_reminded_' + key)) continue; } catch (e) { console.warn(e); }
+            // Don't re-show if card is already visible for this class
+            if (card.classList.contains('visible')) continue;
+            showCard(cls);
+            break;
+        }
+    }
+
+    // Check on load and every 30 seconds
+    checkReminders();
+    setInterval(checkReminders, 30000);
+}());
+</script>
 
 <script>
 (function () {

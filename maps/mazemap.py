@@ -31,9 +31,16 @@ def get_route(source_poi_id, target_poi_id):
     if not features:
         raise MazeMapRouteError("MazeMap did not return a route path.")
 
+    metrics = path_data.get("pathMetrics", {})
+    distance_m = float(metrics.get("distance", 0) or 0)
+    # Walking speed ≈ 1.4 m/s = 84 m/min; minimum 1 min shown
+    walking_minutes = max(1, round(distance_m / 84)) if distance_m > 0 else None
+
     return {
         "features": features,
-        "metrics": path_data.get("pathMetrics", {}),
+        "metrics": metrics,
+        "distance_m": distance_m,
+        "walking_minutes": walking_minutes,
         "coordinates": _flatten_feature_coordinates(features),
         "directions": _extract_directions(directions_data),
     }
