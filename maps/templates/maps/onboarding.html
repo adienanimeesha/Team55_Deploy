@@ -468,61 +468,11 @@
     </div>
 
     {# ══════════════════════════════════════════════
-       STEP 2 — Permissions (reminders only)
+       STEP 2 — Timetable preview (dummy data)
     ══════════════════════════════════════════════ #}
     <div class="step hidden-right" id="step-2">
 
         <!-- Top bar: back to step 1 -->
-        <div class="step-topbar">
-            <button class="btn-back" id="btn-back-2" type="button" aria-label="Go back">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                     stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 12H5M12 5l-7 7 7 7"/>
-                </svg>
-            </button>
-            <img class="brand-logo" src="{% static 'uq.png' %}" alt="UQ Indoor Maps">
-            <div class="topbar-spacer"></div>
-        </div>
-
-        <div class="perm-heading">
-            <span class="perm-eyebrow">Permissions</span>
-            <h2 class="perm-title">One quick thing<br>before we start.</h2>
-        </div>
-
-        <div class="perm-body">
-            <!-- Departure Reminders toggle -->
-            <div class="toggle-card" id="toggle-reminders" role="switch" aria-checked="false"
-                 tabindex="0" aria-label="Departure Reminders">
-                <span class="toggle-icon" aria-hidden="true">🔔</span>
-                <div class="toggle-label">
-                    <div class="toggle-label-title">Departure Reminders</div>
-                    <div class="toggle-label-desc">Get nudged when it's time to leave for your next class</div>
-                </div>
-                <div class="toggle-switch" id="switch-reminders">
-                    <div class="toggle-thumb"></div>
-                </div>
-            </div>
-
-            <a class="btn-white" id="btn-permissions-done" href="{% url 'home' %}"
-               style="display:block; text-align:center; text-decoration:none;">
-                Got it, let's go!
-            </a>
-        </div>
-
-        <div class="step-dots" aria-hidden="true">
-            <div class="step-dot" id="dot-1b"></div>
-            <div class="step-dot active" id="dot-2b"></div>
-            <div class="step-dot" id="dot-3b"></div>
-        </div>
-
-    </div>
-
-    {# ══════════════════════════════════════════════
-       STEP 3 — Timetable preview (dummy data)
-    ══════════════════════════════════════════════ #}
-    <div class="step hidden-right" id="step-3">
-
-        <!-- Top bar: back to step 2 -->
         <div class="step-topbar">
             <button class="btn-back" id="btn-back-3" type="button" aria-label="Go back">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -547,8 +497,8 @@
                     <span class="class-time">9:00 AM – 11:00 AM</span>
                     <span class="class-next-badge">Up next</span>
                 </div>
-                <div class="class-code">COMP1100</div>
-                <div class="class-type">Introduction to Programming &mdash; Computer Lab</div>
+                <div class="class-code">COMP2002</div>
+                <div class="class-type">Programming in the Large &mdash; Tutorial</div>
                 <div class="class-location">
                     <svg width="12" height="15" viewBox="0 0 24 30" fill="none" aria-hidden="true">
                         <path d="M12 1C7 1 3 5 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-5-4-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"
@@ -625,16 +575,65 @@
         </div>
 
         <div class="tt-actions">
-            <a class="btn-white" href="{% url 'home' %}" id="btn-start"
-               style="display:block; text-align:center; text-decoration:none;">
+            <button class="btn-white" id="btn-start" type="button">
                 Start navigating!
-            </a>
+            </button>
         </div>
 
         <div class="step-dots" aria-hidden="true">
             <div class="step-dot" id="dot-1c"></div>
-            <div class="step-dot" id="dot-2c"></div>
-            <div class="step-dot active" id="dot-3c"></div>
+            <div class="step-dot active" id="dot-2c"></div>
+            <div class="step-dot" id="dot-3c"></div>
+        </div>
+
+    </div>
+
+    {# ══════════════════════════════════════════════
+       STEP 3 — Permissions (reminders)
+    ══════════════════════════════════════════════ #}
+    <div class="step hidden-right" id="step-3">
+
+        <!-- Top bar: back to step 2 (timetable) or step 1 (welcome) depending on path -->
+        <div class="step-topbar">
+            <button class="btn-back" id="btn-back-2" type="button" aria-label="Go back">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                     stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 5l-7 7 7 7"/>
+                </svg>
+            </button>
+            <img class="brand-logo" src="{% static 'uq.png' %}" alt="UQ Indoor Maps">
+            <div class="topbar-spacer"></div>
+        </div>
+
+        <div class="perm-heading">
+            <span class="perm-eyebrow">Permissions</span>
+            <h2 class="perm-title">One quick thing<br>before we start.</h2>
+        </div>
+
+        <div class="perm-body">
+            <!-- Departure Reminders toggle -->
+            <div class="toggle-card" id="toggle-reminders" role="switch" aria-checked="false"
+                 tabindex="0" aria-label="Departure Reminders">
+                <span class="toggle-icon" aria-hidden="true">🔔</span>
+                <div class="toggle-label">
+                    <div class="toggle-label-title">Departure Reminders</div>
+                    <div class="toggle-label-desc">Get nudged when it's time to leave for your next class</div>
+                </div>
+                <div class="toggle-switch" id="switch-reminders">
+                    <div class="toggle-thumb"></div>
+                </div>
+            </div>
+
+            <a class="btn-white" id="btn-permissions-done" href="{% url 'home' %}"
+               style="display:block; text-align:center; text-decoration:none;">
+                Got it, let's go!
+            </a>
+        </div>
+
+        <div class="step-dots" aria-hidden="true">
+            <div class="step-dot" id="dot-1b"></div>
+            <div class="step-dot" id="dot-2b"></div>
+            <div class="step-dot active" id="dot-3b"></div>
         </div>
 
     </div>
@@ -651,6 +650,12 @@
         document.getElementById('step-3'),
     ];
     var current = 0;
+    // Tracks which step step-2 (reminders) was reached from, so the back button
+    // returns to the right place: 0 = came from Welcome via "Skip", 2 = came from
+    // Timetable via "Start navigating!"
+    // Tracks which step the reminders page (step-3, index 2) was reached from:
+    // 0 = Welcome via "Skip for now", 1 = Timetable via "Start navigating!"
+    var remindersPrevStep = 0;
 
     function goTo(next) {
         var prev = current;
@@ -667,18 +672,22 @@
         current = next;
     }
 
-    // Back buttons — both branches return to step 1
-    document.getElementById('btn-back-2').addEventListener('click', function () { goTo(0); });
+    // Back from timetable (step-2, index 1) → always Welcome
     document.getElementById('btn-back-3').addEventListener('click', function () { goTo(0); });
-
-    // Connect to My Timetable → step 3 (classes)
-    document.getElementById('btn-connect').addEventListener('click', function () {
-        goTo(2);
+    // Back from reminders (step-3, index 2) → wherever we came from
+    document.getElementById('btn-back-2').addEventListener('click', function () {
+        goTo(remindersPrevStep);
     });
 
-    // Skip for now → step 2 (reminders)
-    document.getElementById('btn-skip').addEventListener('click', function () {
+    // Connect to My Timetable → step-2 (timetable preview, index 1)
+    document.getElementById('btn-connect').addEventListener('click', function () {
         goTo(1);
+    });
+
+    // Skip for now → step-3 (reminders, index 2), back returns to Welcome
+    document.getElementById('btn-skip').addEventListener('click', function () {
+        remindersPrevStep = 0;
+        goTo(2);
     });
 
     // Reminders "Got it" is now a plain <a> → homepage.
@@ -709,12 +718,12 @@
         }
     } catch (storageReadErr) { console.warn('localStorage unavailable', storageReadErr); }
 
-    // ── Save class schedule to localStorage when "Start navigating!" is clicked ─
+    // ── "Start navigating!" — save schedule then proceed to reminders step ────
     document.getElementById('btn-start').addEventListener('click', function () {
         var schedule = {
             classes: [
                 {
-                    code: 'COMP1100', type: 'Computer Lab',
+                    code: 'COMP2002', type: 'Tutorial',
                     building: 'Building 62', room: '213',
                     time_h: 9,  time_m: 0,
                     to: '213',  from: '',
@@ -739,7 +748,9 @@
         try {
             localStorage.setItem('uq_schedule', JSON.stringify(schedule));
         } catch (schedErr) { console.warn('Could not save schedule', schedErr); }
-        // href navigation proceeds naturally after this handler
+        // Proceed to reminders step (index 2); back from there returns here (timetable, index 1)
+        remindersPrevStep = 1;
+        goTo(2);
     });
 
     // ── Today's date label ───────────────────────────────────────────────────

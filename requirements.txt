@@ -9,3 +9,4 @@ icalendar
 celery
 redis
 python-dateutil
+python-dotenv

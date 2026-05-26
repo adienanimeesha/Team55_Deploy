@@ -1,3 +1,4 @@
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,15 +13,31 @@
 <div class="app">
     <header class="topbar">
         <div class="brand">
-            <div class="brand-mark">UQ</div>
-            <div>Indoor Maps</div>
+            <img class="topbar-uq-logo" src="{% static 'uq.png' %}" alt="UQ Indoor Maps">
         </div>
+        <button class="timetable-topbar-btn" id="timetable-topbar-btn" type="button"
+                aria-label="View today's timetable" aria-expanded="false" aria-controls="tt-panel">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
+            Timetable
+        </button>
     </header>
 
     <main class="main{% if path %} route-active{% endif %}" id="main-layout">
 
         <!-- ══ FLOATING OVERLAY PANEL (always present, content changes by state) ══ -->
-        <aside class="map-overlay-panel" id="map-search-panel">
+        <aside class="map-overlay-panel" id="map-search-panel" aria-label="Destination search">
+
+            {# ── UPCOMING CLASS STRIP (JS-populated from localStorage, hidden when route active) ── #}
+            {% if not to_node and not path %}
+            <section class="upcoming-bar" id="upcoming-bar" aria-label="Upcoming class"
+                     style="display:none">
+                {# content injected by JS #}
+            </section>
+            {% endif %}
 
             {# ── PANEL A: Destination search ── #}
             <section class="floating-search-panel" id="dest-search-panel"
@@ -164,7 +181,13 @@
         {% with path|last as last_node %}
         <div class="route-card-bar">
             <a href="?to={{ to_q }}&to_id={{ to_id }}&from={{ from_q }}&from_id={{ from_id }}"
-               class="change-route-link">← Back</a>
+               class="route-back-btn" aria-label="Go back">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 12H5M12 5l-7 7 7 7"/>
+                </svg>
+            </a>
             <div class="route-bar-endpoints">
                 <div class="endpoint-row">
                     <span class="dot"></span>
@@ -278,6 +301,26 @@
     {% endwith %}
     {% endif %}
 
+    {# ══ TIMETABLE PANEL (slides in from right) ══ #}
+    <div class="tt-panel-overlay" id="tt-panel-overlay" aria-hidden="true"></div>
+    <aside class="tt-panel" id="tt-panel" aria-label="Today's class schedule" aria-hidden="true">
+        <div class="tt-panel-head">
+            <div>
+                <div class="tt-panel-title">Today's Schedule</div>
+                <div class="tt-panel-date" id="tt-panel-date"></div>
+            </div>
+            <button class="tt-panel-close" id="tt-panel-close" type="button" aria-label="Close timetable">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="tt-panel-scroll" id="tt-panel-scroll">
+            <!-- populated by JS -->
+        </div>
+    </aside>
+
     {# ══ DEPARTURE REMINDER CARD (slides in from top, swipe to dismiss) ══ #}
     <div class="reminder-card" id="reminder-card" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="reminder-inner">
@@ -389,6 +432,320 @@
     margin-top: 8px;
     letter-spacing: 0.04em;
 }
+/* ── Topbar UQ logo ── */
+.topbar-uq-logo {
+    height: 46px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+@media (max-width: 480px) {
+    .topbar-uq-logo { height: 38px; }
+}
+
+/* ── Route back button (circular, matches onboarding btn-back style) ── */
+.route-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(81, 36, 122, 0.08);
+    border-radius: 50%;
+    color: #51247A;
+    text-decoration: none;
+    flex-shrink: 0;
+    align-self: center;
+    transition: background 0.15s;
+}
+.route-back-btn:hover  { background: rgba(81, 36, 122, 0.16); }
+.route-back-btn:active { background: rgba(81, 36, 122, 0.24); }
+
+/* ── Upcoming class strip ── */
+.upcoming-bar {
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(229, 222, 214, 0.9);
+    border-left: 4px solid #51247A;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(45, 41, 38, 0.14);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 14px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ub-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ub-badge {
+    background: #51247A;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 3px 9px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+
+.ub-time {
+    font-size: 12px;
+    font-weight: 700;
+    color: #51247A;
+    letter-spacing: 0.04em;
+}
+
+.ub-code {
+    font-size: 17px;
+    font-weight: 800;
+    color: #2d2926;
+    line-height: 1.2;
+}
+
+.ub-type {
+    font-size: 12px;
+    color: #7a7068;
+    line-height: 1.4;
+}
+
+.ub-loc {
+    font-size: 12px;
+    color: #4f4840;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ub-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.ub-walk {
+    font-size: 12px;
+    color: #7a7068;
+}
+
+.ub-dir-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #51247A;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 10px;
+    padding: 8px 13px;
+    font-size: 12px;
+    font-weight: 800;
+    font-family: Arial, sans-serif;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.ub-dir-btn:hover { background: #3d1a5e; }
+
+/* ── Timetable topbar button ── */
+.timetable-topbar-btn {
+    margin-left: auto;
+    background: rgba(255,255,255,0.18);
+    border: none;
+    border-radius: 10px;
+    padding: 7px 11px;
+    cursor: pointer;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: Arial, sans-serif;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.timetable-topbar-btn:hover { background: rgba(255,255,255,0.28); }
+.timetable-topbar-btn:active { background: rgba(255,255,255,0.35); }
+
+/* ── Timetable panel overlay ── */
+.tt-panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 390;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.tt-panel-overlay.open { opacity: 1; pointer-events: auto; }
+
+/* ── Timetable slide-in panel ── */
+.tt-panel {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(360px, 100vw);
+    background: #51247A;
+    z-index: 400;
+    transform: translateX(100%);
+    transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 32px rgba(0,0,0,0.3);
+}
+.tt-panel.open { transform: translateX(0); }
+
+.tt-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 60px 20px 16px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.14);
+}
+
+.tt-panel-title {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 800;
+    font-family: Arial, sans-serif;
+    line-height: 1.2;
+}
+
+.tt-panel-date {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.52);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+.tt-panel-close {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    cursor: pointer;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.tt-panel-close:hover { background: rgba(255,255,255,0.25); }
+
+.tt-panel-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 16px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overscroll-behavior: contain;
+}
+
+.tt-empty {
+    color: rgba(255,255,255,0.65);
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 48px 20px;
+    line-height: 1.7;
+}
+.tt-empty a { color: rgba(255,255,255,0.85); font-weight: 700; }
+
+/* ── Class cards inside timetable panel ── */
+.tp-card {
+    background: #6b3a96;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: opacity 0.2s;
+}
+.tp-card.tp-past { opacity: 0.38; }
+.tp-card.tp-next {
+    background: #fff;
+    border-color: transparent;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.22);
+}
+
+.tp-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.tp-time {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.6);
+}
+.tp-card.tp-next .tp-time { color: #51247A; }
+
+.tp-badge {
+    background: #51247A;
+    color: #fff;
+    font-size: 10px; font-weight: 800;
+    border-radius: 999px;
+    padding: 3px 9px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.tp-code {
+    font-size: 16px; font-weight: 800;
+    color: #fff; line-height: 1.2;
+}
+.tp-card.tp-next .tp-code { color: #2d2926; }
+
+.tp-type {
+    font-size: 12px;
+    color: rgba(255,255,255,0.65);
+}
+.tp-card.tp-next .tp-type { color: #7a7068; }
+
+.tp-loc {
+    font-size: 12px;
+    color: rgba(255,255,255,0.75);
+    display: flex; align-items: center; gap: 5px;
+}
+.tp-card.tp-next .tp-loc { color: #4f4840; }
+
+.tp-walk {
+    font-size: 12px;
+    color: rgba(255,255,255,0.58);
+}
+.tp-card.tp-next .tp-walk { color: #7a7068; }
+
+.tp-dir {
+    display: inline-flex;
+    align-items: center; gap: 5px;
+    margin-top: 6px;
+    background: #51247A;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 10px;
+    padding: 8px 13px;
+    font-size: 12px; font-weight: 800;
+    font-family: Arial, sans-serif;
+    align-self: flex-start;
+    transition: background 0.15s;
+}
+.tp-dir:hover { background: #3d1a5e; }
+
 /* walking time badge in route bar */
 .route-time-badge {
     font-size: 12px;
@@ -1077,6 +1434,205 @@
     markRoom("{{ to_node.building|escapejs }}", roomCode("{{ to_node.label|escapejs }}"), 'svg-route-dest', '#dc2626', '#dc2626', 'dest');
 }());
 {% endif %}
+</script>
+<script>
+/* ── Shared helpers + Upcoming bar + Timetable Panel ─────────────────────── */
+(function () {
+
+    // ── Shared helpers ────────────────────────────────────────────────────────
+    function simNow() {
+        var offset = parseInt(localStorage.getItem('uq_sim_offset_min') || '0', 10);
+        return new Date(Date.now() + offset * 60000);
+    }
+    function totalMin(h, m) { return h * 60 + m; }
+    function padZ(n)        { return n < 10 ? '0' + n : '' + n; }
+    function fmtTime(h, m) {
+        var suf = h < 12 ? 'AM' : 'PM';
+        return (h % 12 || 12) + ':' + padZ(m) + ' ' + suf;
+    }
+    function esc(s) {
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function loadSchedule() {
+        var raw;
+        try { raw = localStorage.getItem('uq_schedule'); } catch (e) {
+            console.warn('localStorage read failed', e); return null;
+        }
+        if (!raw) return null;
+        try { return JSON.parse(raw); } catch (pe) {
+            console.warn('Schedule parse failed', pe); return null;
+        }
+    }
+    function findNextIdx(classes, nowMin) {
+        for (var i = 0; i < classes.length; i++) {
+            if (totalMin(classes[i].time_h, classes[i].time_m) > nowMin) return i;
+        }
+        return -1;
+    }
+
+    // ── Upcoming class strip (between header and search, home state only) ─────
+    (function () {
+        var bar = document.getElementById('upcoming-bar');
+        if (!bar) return;   // not rendered when route/dest active
+
+        function render() {
+            var sched = loadSchedule();
+            if (!sched || !Array.isArray(sched.classes) || !sched.classes.length) {
+                bar.style.display = 'none'; return;
+            }
+            var now    = simNow();
+            var nowMin = totalMin(now.getHours(), now.getMinutes());
+            var idx    = findNextIdx(sched.classes, nowMin);
+            if (idx < 0) { bar.style.display = 'none'; return; }
+
+            var cls     = sched.classes[idx];
+            var dirHref = '/?to=' + encodeURIComponent(cls.to)
+                + (cls.from ? '&from=' + encodeURIComponent(cls.from) : '');
+
+            bar.innerHTML =
+                '<div class="ub-top">'
+                    + '<span class="ub-badge">Up next</span>'
+                    + '<span class="ub-time">' + fmtTime(cls.time_h, cls.time_m) + '</span>'
+                + '</div>'
+                + '<div class="ub-code">' + esc(cls.code) + '</div>'
+                + (cls.type ? '<div class="ub-type">' + esc(cls.type) + '</div>' : '')
+                + ((cls.building || cls.room)
+                    ? '<div class="ub-loc">'
+                        + '<svg width="11" height="14" viewBox="0 0 24 30" fill="none" aria-hidden="true">'
+                        + '<path d="M12 1C7 1 3 5 3 10c0 6.75 9 19 9 19s9-12.25 9-19'
+                        + 'c0-5-4-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"'
+                        + ' fill="#51247A"/></svg>'
+                        + esc((cls.building || '') + (cls.room ? ' · Rm ' + cls.room : ''))
+                        + '</div>'
+                    : '')
+                + '<div class="ub-footer">'
+                    + (cls.walk_min
+                        ? '<span class="ub-walk">🚶 ~' + cls.walk_min + ' min walk</span>'
+                        : '<span></span>')
+                    + '<a class="ub-dir-btn" href="' + dirHref + '">'
+                        + 'Get Directions '
+                        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"'
+                        + ' stroke="currentColor" stroke-width="2.5" stroke-linecap="round"'
+                        + ' stroke-linejoin="round" aria-hidden="true">'
+                        + '<path d="M5 12h14M12 5l7 7-7 7"/></svg>'
+                    + '</a>'
+                + '</div>';
+
+            bar.style.display = '';
+        }
+
+        render();
+        setInterval(render, 60000);   // refresh every minute
+    }());
+
+    // ── Timetable slide-in panel ──────────────────────────────────────────────
+    (function () {
+        var panel    = document.getElementById('tt-panel');
+        var overlay  = document.getElementById('tt-panel-overlay');
+        var openBtn  = document.getElementById('timetable-topbar-btn');
+        var closeBtn = document.getElementById('tt-panel-close');
+        var scrollEl = document.getElementById('tt-panel-scroll');
+        var dateEl   = document.getElementById('tt-panel-date');
+        if (!panel || !openBtn || !scrollEl) return;
+
+        function renderTimetable() {
+            var d = new Date();
+            var DAYS   = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+            var MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN',
+                          'JUL','AUG','SEP','OCT','NOV','DEC'];
+            if (dateEl) {
+                dateEl.textContent = DAYS[d.getDay()] + ' '
+                    + d.getDate() + ' ' + MONTHS[d.getMonth()];
+            }
+
+            var sched = loadSchedule();
+            if (!sched) {
+                scrollEl.innerHTML = '<div class="tt-empty">No timetable loaded.'
+                    + '<br><a href="/onboarding/">Set up your schedule →</a></div>';
+                return;
+            }
+            if (!Array.isArray(sched.classes) || !sched.classes.length) {
+                scrollEl.innerHTML = '<div class="tt-empty">No classes in your timetable.</div>';
+                return;
+            }
+
+            var now     = simNow();
+            var nowMin  = totalMin(now.getHours(), now.getMinutes());
+            var nextIdx = findNextIdx(sched.classes, nowMin);
+
+            var html = '';
+            sched.classes.forEach(function (cls, idx) {
+                var cMin    = totalMin(cls.time_h, cls.time_m);
+                var isPast  = cMin <= nowMin;
+                var isNext  = idx === nextIdx;
+                var cardCls = 'tp-card' + (isNext ? ' tp-next' : (isPast ? ' tp-past' : ''));
+                var dirHref = '/?to=' + encodeURIComponent(cls.to)
+                    + (cls.from ? '&from=' + encodeURIComponent(cls.from) : '');
+                var pinFill = isNext ? '#51247A'
+                    : (isPast ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.65)');
+
+                html += '<div class="' + cardCls + '">';
+                html += '<div class="tp-card-top">';
+                html += '<span class="tp-time">' + fmtTime(cls.time_h, cls.time_m) + '</span>';
+                if (isNext) html += '<span class="tp-badge">Up next</span>';
+                html += '</div>';
+                html += '<div class="tp-code">' + esc(cls.code) + '</div>';
+                if (cls.type) html += '<div class="tp-type">' + esc(cls.type) + '</div>';
+                if (cls.building || cls.room) {
+                    html += '<div class="tp-loc">'
+                        + '<svg width="11" height="14" viewBox="0 0 24 30" fill="none" aria-hidden="true">'
+                        + '<path d="M12 1C7 1 3 5 3 10c0 6.75 9 19 9 19s9-12.25 9-19'
+                        + 'c0-5-4-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"'
+                        + ' fill="' + pinFill + '"/></svg>'
+                        + esc((cls.building || '') + (cls.room ? ' · Rm ' + cls.room : ''))
+                        + '</div>';
+                }
+                if (cls.walk_min) {
+                    html += '<div class="tp-walk">🚶 ~' + cls.walk_min + ' min walk</div>';
+                }
+                html += '<a class="tp-dir" href="' + dirHref + '">'
+                    + 'Get Directions '
+                    + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"'
+                    + ' stroke="currentColor" stroke-width="2.5" stroke-linecap="round"'
+                    + ' stroke-linejoin="round" aria-hidden="true">'
+                    + '<path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
+                html += '</div>';
+            });
+            scrollEl.innerHTML = html;
+        }
+
+        function openPanel() {
+            renderTimetable();
+            panel.classList.add('open');
+            panel.setAttribute('aria-hidden', 'false');
+            openBtn.setAttribute('aria-expanded', 'true');
+            if (overlay) {
+                overlay.classList.add('open');
+                overlay.setAttribute('aria-hidden', 'false');
+            }
+        }
+
+        function closePanel() {
+            panel.classList.remove('open');
+            panel.setAttribute('aria-hidden', 'true');
+            openBtn.setAttribute('aria-expanded', 'false');
+            if (overlay) {
+                overlay.classList.remove('open');
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+        }
+
+        openBtn.addEventListener('click', openPanel);
+        if (closeBtn) closeBtn.addEventListener('click', closePanel);
+        if (overlay)  overlay.addEventListener('click',  closePanel);
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && panel.classList.contains('open')) closePanel();
+        });
+    }());
+
+}());
 </script>
 </body>
 </html>
