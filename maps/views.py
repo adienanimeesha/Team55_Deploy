@@ -534,3 +534,8 @@ def building_detail(request, building_id):
         "current_floor": current_floor,
         "selected_room": selected_room,
     })
+
+
+def reminders(request):
+    """Serve the smart reminders app"""
+    return render(request, "maps/index.html")

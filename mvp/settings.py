@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'indoor_nav',
     'maps',
 ]
@@ -120,3 +121,13 @@ STATIC_URL = 'static/'
 
 # Serve floor-plan SVG files (data/floor_plans/*.svg) at /static/floor_plans/...
 STATICFILES_DIRS = [BASE_DIR / 'data']
+
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ],
+}
