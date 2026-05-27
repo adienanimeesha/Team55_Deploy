@@ -4,3 +4,9 @@ whitenoise
 psycopg2-binary
 requests
 urllib3
+djangorestframework
+icalendar
+celery
+redis
+python-dateutil
+python-dotenv

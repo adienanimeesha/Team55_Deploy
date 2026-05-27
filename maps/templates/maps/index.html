@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UQ Smart Reminders</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Split Layout */
+        .split-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .split-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 500px;
+        }
+
+        .card.hidden {
+            display: none;
+        }
+
+        /* Welcome Card */
+        .welcome-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .uq-logo {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+
+        .welcome-header {
+            font-size: 1.4em;
+            opacity: 0.9;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .welcome-title {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 60px;
+            line-height: 1.2;
+        }
+
+        .welcome-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .skip-link {
+            color: white;
+            text-align: center;
+            opacity: 0.9;
+            text-decoration: none;
+            font-size: 1em;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .skip-link:hover {
+            opacity: 1;
+        }
+
+        /* Permissions Card */
+        .permissions-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .permissions-header {
+            font-size: 1.4em;
+            opacity: 0.9;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .permissions-title {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 40px;
+            line-height: 1.3;
+        }
+
+        .permission-item {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .permission-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .permission-icon {
+            font-size: 2em;
+        }
+
+        .permission-text {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .toggle {
+            width: 50px;
+            height: 28px;
+            background: #ddd;
+            border-radius: 14px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+            border: none;
+        }
+
+        .toggle.active {
+            background: #667eea;
+        }
+
+        .toggle-dot {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: left 0.3s;
+        }
+
+        .toggle.active .toggle-dot {
+            left: 24px;
+        }
+
+        /* Buttons */
+        button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background: #f8f9ff;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background: #eff0ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #eff0ff;
+            border-color: #764ba2;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .upload-area p {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .upload-area small {
+            color: #999;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Reminders Section */
+        .reminders-card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .reminders-card.hidden {
+            display: none;
+        }
+
+        .reminders-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .reminders-header h2 {
+            color: #333;
+            font-size: 2em;
+        }
+
+        .reminders-header small {
+            color: #999;
+        }
+
+        .reminder-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .reminder-item:hover {
+            background: #eff0ff;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .reminder-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .course-code {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 1.3em;
+        }
+
+        .session-type {
+            background: #667eea;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .reminder-location {
+            color: #666;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+        }
+
+        .reminder-time {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #856404;
+            font-size: 0.95em;
+        }
+
+        .reminder-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            font-size: 0.9em;
+            color: #777;
+        }
+
+        .detail {
+            display: flex;
+            align-items: center;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            margin-right: 5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .no-reminders {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .no-reminders p {
+            font-size: 1.1em;
+        }
+
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            margin-top: 30px;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+        }
+
+        .upload-message {
+            margin-top: 20px;
+        }
+
+        .setup-card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .setup-card.hidden {
+            display: none;
+        }
+
+        .setup-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .setup-header h2 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .setup-header p {
+            color: #666;
+            font-size: 1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Welcome & Permissions Screen -->
+        <div class="split-container" id="welcomeAndPermissionsScreen">
+            <!-- Welcome Card -->
+            <div class="card welcome-card">
+                <div>
+                    <div class="uq-logo">📚</div>
+                    <div class="welcome-header">Welcome</div>
+                    <div class="welcome-title">Never wonder if you'll make it to class on time.</div>
+                </div>
+                <div class="welcome-actions">
+                    <button class="btn-primary" onclick="showUploadFlow()">Connect to My Timetable</button>
+                    <a class="skip-link" onclick="goToHomepage()">Skip for now</a>
+                </div>
+            </div>
+
+            <!-- Permissions Card (Hidden Initially) -->
+            <div class="card permissions-card hidden" id="permissionsCard">
+                <div>
+                    <div class="uq-logo">📚</div>
+                    <div class="permissions-header">Permissions First</div>
+                    <div class="permissions-title">Two quick things before we start.</div>
+                    
+                    <div class="permission-item">
+                        <div class="permission-left">
+                            <div class="permission-icon">🔔</div>
+                            <div class="permission-text">Departure Reminders</div>
+                        </div>
+                        <button class="toggle active" id="reminderToggle" onclick="togglePermission(this)">
+                            <div class="toggle-dot"></div>
+                        </button>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="goToDemoData()">Got it, let's go!</button>
+            </div>
+        </div>
+
+        <!-- Setup/Upload Card -->
+        <div class="setup-card" id="setupCard">
+            <div class="setup-header">
+                <h2>Upload Your Timetable</h2>
+                <p>Export your timetable from my.UQ and upload the .ics file</p>
+            </div>
+
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('icsFile').click()">
+                <p>📁 Click to browse or drag & drop</p>
+                <small>.ics files only (from my.UQ calendar export)</small>
+            </div>
+
+            <input type="file" id="icsFile" accept=".ics" onchange="handleFileUpload(event)">
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-primary" style="flex: 1;" onclick="document.getElementById('icsFile').click()">
+                    Choose File
+                </button>
+                <button class="btn-secondary" style="flex: 1;" onclick="goToWelcome()">Cancel</button>
+            </div>
+
+            <div id="uploadMessage" class="upload-message"></div>
+        </div>
+
+        <!-- Reminders/Demo Card -->
+        <div class="reminders-card hidden" id="remindersCard">
+            <div class="reminders-header">
+                <h2>Your Reminders</h2>
+                <small id="reminderCount"></small>
+            </div>
+            <div id="remindersList"></div>
+            <button class="btn-secondary back-btn" onclick="goToHomepage()">← Back to Campus Map</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/timetable';
+        let permissionsGranted = {
+            reminders: true,
+        };
+
+        function goToWelcome() {
+            document.getElementById('welcomeAndPermissionsScreen').style.display = 'grid';
+            document.getElementById('setupCard').classList.add('hidden');
+            document.getElementById('remindersCard').classList.add('hidden');
+            document.getElementById('permissionsCard').classList.add('hidden');
+        }
+
+        function showUploadFlow() {
+            document.getElementById('welcomeAndPermissionsScreen').style.display = 'none';
+            document.getElementById('setupCard').classList.remove('hidden');
+        }
+
+        function showPermissionsScreen() {
+            document.getElementById('permissionsCard').classList.remove('hidden');
+        }
+
+        function goToDemoData() {
+            loadDummyData();
+        }
+
+        function goToHomepage() {
+            window.location.href = '/';
+        }
+
+        function togglePermission(btn) {
+            btn.classList.toggle('active');
+            permissionsGranted.reminders = btn.classList.contains('active');
+        }
+
+        // Drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('icsFile').files = files;
+                handleFileUpload({ target: { files } });
+            }
+        });
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const messageDiv = document.getElementById('uploadMessage');
+            messageDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Uploading...</p></div>';
+
+            const formData = new FormData();
+            formData.append('ics_file', file);
+            formData.append('semester', 'Current Semester');
+
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                             getCookie('csrftoken') || '';
+
+            try {
+                const response = await fetch(`${API_BASE}/upload-timetable/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    messageDiv.innerHTML = `<div class="success">✅ ${data.message}</div>`;
+                    setTimeout(() => {
+                        showPermissionsScreen();
+                    }, 1500);
+                } else {
+                    const error = await response.json();
+                    messageDiv.innerHTML = '<div class="error">❌ Error uploading file. Make sure it\'s a valid .ics file.</div>';
+                }
+            } catch (error) {
+                messageDiv.innerHTML = '<div class="error">❌ Network error. Please try again.</div>';
+                console.error('Upload error:', error);
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        async function loadDummyData() {
+            document.getElementById('welcomeAndPermissionsScreen').style.display = 'none';
+            document.getElementById('setupCard').classList.add('hidden');
+            document.getElementById('remindersCard').classList.remove('hidden');
+
+            // Just show dummy reminders directly
+            showDummyReminders();
+        }
+
+        async function displayReminders() {
+            document.getElementById('welcomeAndPermissionsScreen').style.display = 'none';
+            document.getElementById('setupCard').classList.add('hidden');
+            document.getElementById('remindersCard').classList.remove('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}/all-classes/`);
+                const data = await response.json();
+
+                const remindersList = document.getElementById('remindersList');
+                const reminderCount = document.getElementById('reminderCount');
+
+                if (data.classes && data.classes.length > 0) {
+                    reminderCount.textContent = `${data.classes.length} classes found`;
+                    remindersList.innerHTML = data.classes.map(cls => `
+                        <div class="reminder-item">
+                            <div class="reminder-header">
+                                <div>
+                                    <div class="course-code">${cls.course_code}</div>
+                                    <div class="reminder-location">📍 ${cls.building} - Room ${cls.room_number}</div>
+                                </div>
+                                <span class="session-type">${cls.session_type}</span>
+                            </div>
+                            <div class="reminder-time">
+                                🔔 Reminder: ${formatTime(cls.reminder_time)}
+                            </div>
+                            <div class="reminder-details">
+                                <div class="detail">
+                                    <span class="detail-label">Start:</span>
+                                    ${formatTime(cls.start_time)}
+                                </div>
+                                <div class="detail">
+                                    <span class="detail-label">End:</span>
+                                    ${formatTime(cls.end_time)}
+                                </div>
+                                <div class="detail">
+                                    <span class="detail-label">Walk Time:</span>
+                                    ${cls.estimated_travel_time_minutes} min
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    reminderCount.textContent = 'No classes';
+                    remindersList.innerHTML = '<div class="no-reminders"><p>No classes found</p></div>';
+                }
+            } catch (error) {
+                console.error('Error fetching reminders:', error);
+                document.getElementById('remindersList').innerHTML = '<div class="error">Error loading reminders</div>';
+            }
+        }
+
+        function showDummyReminders() {
+            document.getElementById('welcomeAndPermissionsScreen').style.display = 'none';
+            document.getElementById('setupCard').classList.add('hidden');
+            document.getElementById('remindersCard').classList.remove('hidden');
+
+            const remindersList = document.getElementById('remindersList');
+            const reminderCount = document.getElementById('reminderCount');
+
+            const dummyData = [
+                {
+                    course_code: 'ECON2300',
+                    session_type: 'Lab',
+                    building: 'Building 69',
+                    room_number: '315',
+                    start_time: '2026-05-26T10:00:00Z',
+                    end_time: '2026-05-26T12:00:00Z',
+                    reminder_time: '2026-05-26T09:47:00Z',
+                    estimated_travel_time_minutes: 8
+                },
+                {
+                    course_code: 'COMP4702',
+                    session_type: 'Lecture',
+                    building: 'Building 63',
+                    room_number: '358',
+                    start_time: '2026-05-26T12:00:00Z',
+                    end_time: '2026-05-26T14:00:00Z',
+                    reminder_time: '2026-05-26T11:47:00Z',
+                    estimated_travel_time_minutes: 8
+                }
+            ];
+
+            reminderCount.textContent = `${dummyData.length} demo classes`;
+            remindersList.innerHTML = dummyData.map(cls => `
+                <div class="reminder-item">
+                    <div class="reminder-header">
+                        <div>
+                            <div class="course-code">${cls.course_code}</div>
+                            <div class="reminder-location">📍 ${cls.building} - Room ${cls.room_number}</div>
+                        </div>
+                        <span class="session-type">${cls.session_type}</span>
+                    </div>
+                    <div class="reminder-time">
+                        🔔 Reminder: ${formatTime(cls.reminder_time)}
+                    </div>
+                    <div class="reminder-details">
+                        <div class="detail">
+                            <span class="detail-label">Start:</span>
+                            ${formatTime(cls.start_time)}
+                        </div>
+                        <div class="detail">
+                            <span class="detail-label">End:</span>
+                            ${formatTime(cls.end_time)}
+                        </div>
+                        <div class="detail">
+                            <span class="detail-label">Walk Time:</span>
+                            ${cls.estimated_travel_time_minutes} min
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function formatTime(isoTime) {
+            const date = new Date(isoTime);
+            return date.toLocaleString('en-AU', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>

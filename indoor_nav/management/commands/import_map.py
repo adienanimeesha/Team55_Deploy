@@ -55,6 +55,7 @@ class Command(BaseCommand):
                 'lat': float(row['lat']) if row.get('lat') else None,
                 'lng': float(row['lng']) if row.get('lng') else None,
                 'uq_maps_identifier': row.get('uq_maps_identifier', ''),
+                'poi_id': int(row['poi_id']) if row.get('poi_id') else None,
             }
         )
         return 1

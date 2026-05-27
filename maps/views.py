@@ -1,8 +1,10 @@
 import json
 import re
+from urllib.parse import urlencode
 from django.db.models import Q
 from django.shortcuts import render
 from .data import BUILDINGS
+from .mazemap import MazeMapRouteError, get_route, node_poi_id
 from indoor_nav.models import Node
 from indoor_nav.pathfinding import dijkstra
 from indoor_nav.path_simplification import simplify_path, format_directions
@@ -105,8 +107,18 @@ def _resolve_node(query, node_id):
 
 def _floor_room_matches(floor, query):
     matches = []
+    room_code_query = _room_code_from_text(query)
     for room in floor["rooms"]:
-        if query in room["code"].lower() or query in room["name"].lower() or query in room["type"].lower():
+        room_code = room["code"].lower()
+        room_name = room["name"].lower()
+        room_type = room["type"].lower()
+
+        if room_code_query:
+            is_match = room_code == room_code_query
+        else:
+            is_match = query in room_name or query in room_type
+
+        if is_match:
             room_copy = room.copy()
             room_copy["floor_level"] = floor["level"]
             room_copy["floor_label"] = floor["label"]
@@ -115,12 +127,20 @@ def _floor_room_matches(floor, query):
 
 
 def _building_results(query):
+    exact_building_number = _building_number(query) if query else ""
+    if exact_building_number and any(building["number"] == exact_building_number for building in BUILDINGS):
+        return [
+            {"building": building, "matching_rooms": []}
+            for building in BUILDINGS
+            if building["number"] == exact_building_number
+        ]
+
     results = []
     for building in BUILDINGS:
         building_matches = (
             not query
             or query in building["name"].lower()
-            or query in building["number"].lower()
+            or query == building["number"].lower()
             or query in building["campus"].lower()
         )
         matching_rooms = []
@@ -182,64 +202,198 @@ def _get_path_fp_coords(path, buildings):
     return result
 
 
+def _annotate_mazemap_route_floors(features, from_floor, to_floor):
+    """
+    Build a flat coordinate list from MazeMap GeoJSON features, ensuring every
+    coordinate carries a 'floor' label so the frontend can split the route line
+    into a solid portion (destination floor) and a dashed portion (start floor).
+
+    Priority order for the floor label of each feature's coordinates:
+      1. Explicit zLevel / level in the feature's properties
+      2. Third value of the coordinate tuple  (some APIs return [lon, lat, zLevel])
+      3. Positional inference: first feature → from_floor, last feature → to_floor
+         (MazeMap always emits separate features per floor segment, in route order)
+    """
+    def _zlevel(feat):
+        props = feat.get("properties") or {}
+        for key in ("zLevel", "z_level", "level", "zLevelId", "z"):
+            val = props.get(key)
+            if val is not None:
+                try:
+                    return str(int(round(float(val))))
+                except (TypeError, ValueError):
+                    return str(val)
+        return None
+
+    coords = []
+    seen = set()
+    n = len(features)
+
+    for fi, feature in enumerate(features):
+        z = _zlevel(feature)
+        if z is None:
+            # Positional fallback: first feature is on the start floor,
+            # last feature is on the destination floor.
+            if fi == 0:
+                z = str(from_floor)
+            elif fi == n - 1:
+                z = str(to_floor)
+            # Middle features (rare; e.g. a bridge level): leave as None →
+            # treated as "not dest floor" → dashed in the frontend.
+
+        for coord_vals in (feature.get("geometry") or {}).get("coordinates", []):
+            lon, lat = coord_vals[0], coord_vals[1]
+            effective_z = z
+            if effective_z is None and len(coord_vals) >= 3:
+                try:
+                    effective_z = str(int(round(float(coord_vals[2]))))
+                except (TypeError, ValueError):
+                    effective_z = str(coord_vals[2])
+
+            key = (round(lat, 7), round(lon, 7))
+            if key in seen:
+                continue
+            seen.add(key)
+            entry = {"lat": lat, "lng": lon}
+            if effective_z is not None:
+                entry["floor"] = effective_z
+            coords.append(entry)
+
+    return coords
+
+
 def _run_route(from_q, from_id, to_q, to_id):
     from_node, from_candidates = _resolve_node(from_q, from_id)
     to_node, to_candidates = _resolve_node(to_q, to_id)
     path = path_coords = route_error = simplified_segments = floor_visualization = None
+    walking_minutes = None
 
     if from_node and to_node:
-        path, _ = dijkstra(from_node.id, to_node.id)
+        source_poi = node_poi_id(from_node)
+        target_poi = node_poi_id(to_node)
+
+        if source_poi and target_poi:
+            try:
+                mazemap_route = get_route(source_poi, target_poi)
+                path = [from_node, to_node]
+                walking_minutes = mazemap_route.get("walking_minutes")
+                simplified_segments = mazemap_route["directions"]
+                if not simplified_segments:
+                    simplified_segments = [{
+                        "description": f'Follow the MazeMap route to "{to_node.label}".',
+                    }]
+                # For multi-floor routes, re-derive coordinates with per-coord
+                # floor labels so the frontend can draw the start-floor portion
+                # as dashed.  Falls back to the pre-flattened list when the
+                # route stays on one floor.
+                if from_node.floor and to_node.floor and from_node.floor != to_node.floor:
+                    coords = _annotate_mazemap_route_floors(
+                        mazemap_route["features"], from_node.floor, to_node.floor
+                    )
+                else:
+                    coords = mazemap_route["coordinates"]
+                if len(coords) >= 2:
+                    path_coords = json.dumps(coords)
+            except MazeMapRouteError:
+                path = None
+
         if path is None:
-            route_error = f'No path found between "{from_node.label}" and "{to_node.label}".'
-        else:
-            # Generate simplified path segments
-            simplified_segments = simplify_path(path, angle_threshold=15.0)
-            
-            # Generate floor-based visualization
-            if simplified_segments:
-                floor_segments = group_segments_by_floor(simplified_segments)
-                floor_order = get_floor_order(simplified_segments)
-                
-                floor_visualization = []
-                for i, floor_num in enumerate(floor_order):
-                    floor_label = f"Floor {floor_num}"
-                    segments = floor_segments.get(floor_label, [])
-                    
-                    # Generate SVG overlay for this floor
-                    svg_overlay = segments_to_svg(segments)
-                    
-                    # Get floor transitions (stairs/elevators to next floor)
-                    next_floor_transition = None
-                    if i < len(floor_order) - 1:
-                        next_floor = f"Floor {floor_order[i + 1]}"
-                        next_floor_transition = create_floor_transition_info(
-                            floor_label, next_floor, simplified_segments
-                        )
-                    
-                    floor_visualization.append({
-                        'floor': floor_label,
-                        'floor_num': floor_num,
-                        'segments': segments,
-                        'svg_overlay': svg_overlay,
-                        'next_transition': next_floor_transition
-                    })
-            
-            coords = [
-                {'lat': n.lat, 'lng': n.lng, 'label': n.label}
-                for n in path if n.lat is not None and n.lng is not None
-            ]
-            if len(coords) >= 2:
-                path_coords = json.dumps(coords)
+            path, _ = dijkstra(from_node.id, to_node.id)
+            if path is None:
+                route_error = f'No path found between "{from_node.label}" and "{to_node.label}".'
+            else:
+                # Generate simplified path segments
+                simplified_segments = simplify_path(path, angle_threshold=15.0)
+
+                # Generate floor-based visualization
+                if simplified_segments:
+                    floor_segments = group_segments_by_floor(simplified_segments)
+                    floor_order = get_floor_order(simplified_segments)
+
+                    floor_visualization = []
+                    for i, floor_num in enumerate(floor_order):
+                        floor_label = f"Floor {floor_num}"
+                        segments = floor_segments.get(floor_label, [])
+
+                        svg_overlay = segments_to_svg(segments)
+
+                        next_floor_transition = None
+                        if i < len(floor_order) - 1:
+                            next_floor = f"Floor {floor_order[i + 1]}"
+                            next_floor_transition = create_floor_transition_info(
+                                floor_label, next_floor, simplified_segments
+                            )
+
+                        floor_visualization.append({
+                            'floor': floor_label,
+                            'floor_num': floor_num,
+                            'segments': segments,
+                            'svg_overlay': svg_overlay,
+                            'next_transition': next_floor_transition
+                        })
+
+                coords = [
+                    {'lat': n.lat, 'lng': n.lng, 'label': n.label, 'floor': n.floor}
+                    for n in path if n.lat is not None and n.lng is not None
+                ]
+                if len(coords) >= 2:
+                    path_coords = json.dumps(coords)
     else:
         route_error = (
             _missing_error(from_q, from_node, from_candidates)
             or _missing_error(to_q, to_node, to_candidates)
         )
-    return from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments, floor_visualization
+    return (from_node, from_candidates, to_node, to_candidates,
+            path, path_coords, route_error, simplified_segments,
+            floor_visualization, walking_minutes)
+
+
+def _get_node_floor_data(node, buildings):
+    """Return {'building': ..., 'floor': ..., 'svg_id': ...} for a node's building+floor, or None."""
+    if not node:
+        return None
+    b_match = re.search(r'\b(\d+)\b', node.building or '')
+    if not b_match:
+        return None
+    b_num = b_match.group(1)
+    for building in buildings:
+        if building.get('number') == b_num:
+            for floor in building['floors']:
+                if floor['level'] == node.floor:
+                    return {
+                        'building': building,
+                        'floor': floor,
+                        'svg_id': f'b{b_num}_f{floor["level"]}',
+                    }
+    return None
+
+
+def _uq_map_embed_url(node=None, floor="2"):
+    lat = -27.49907705145847
+    lng = 153.01222576055739
+    z_level = floor or "2"
+    identifier = ""
+
+    if node and node.lat and node.lng:
+        lat = node.lat
+        lng = node.lng
+        z_level = node.floor or z_level
+        identifier = node.uq_maps_identifier or ""
+
+    params = {
+        "zoom": "19.550611410027877",
+        "campusId": "406",
+        "lat": lat,
+        "lng": lng,
+        "zLevel": z_level,
+        "embed": "true",
+    }
+    if identifier:
+        params["identifier"] = identifier
+    return f"https://maps.uq.edu.au/?{urlencode(params)}"
 
 
 FLOOR_OPTIONS = [
-    {"value": "0",  "label": "Ground"},
     {"value": "1",  "label": "Floor 1"},
     {"value": "2",  "label": "Floor 2"},
     {"value": "2A", "label": "Floor 2A"},
@@ -265,26 +419,50 @@ def home(request):
     q = request.GET.get("q", "").strip().lower()
     results = _building_results(q)
 
-    selected_floor = request.GET.get("floor", "1")
     selected_campus = request.GET.get("campus", "st-lucia")
 
     from_q = request.GET.get('from', '').strip()
     to_q = request.GET.get('to', '').strip()
     from_id = request.GET.get('from_id', '').strip()
     to_id = request.GET.get('to_id', '').strip()
+    # Only compute the route when the user explicitly clicks "Get Directions"
+    get_directions = bool(request.GET.get('get_directions', ''))
 
     from_node = to_node = path = path_coords = route_error = simplified_segments = floor_visualization = None
     from_candidates = to_candidates = []
+    walking_minutes = None
 
-    if from_q or from_id or to_q or to_id:
-        from_node, from_candidates, to_node, to_candidates, path, path_coords, route_error, simplified_segments, floor_visualization = (
-            _run_route(from_q, from_id, to_q, to_id)
-        )
+    if to_q or to_id:
+        # Always resolve the destination so Panel B can render
+        to_node, to_candidates = _resolve_node(to_q, to_id)
+
+    if from_q or from_id:
+        # Resolve starting point (for display / disambiguation in Panel B)
+        from_node, from_candidates = _resolve_node(from_q, from_id)
+
+    if get_directions:
+        # Full route computation — triggered only by the "Get Directions" button
+        (from_node, from_candidates,
+         to_node, to_candidates,
+         path, path_coords, route_error,
+         simplified_segments, floor_visualization,
+         walking_minutes) = _run_route(from_q, from_id, to_q, to_id)
+
+    # Auto-select floor: explicit param > destination node floor > start node floor > default "1"
+    selected_floor = request.GET.get("floor", "")
+    if not selected_floor:
+        if to_node:
+            selected_floor = to_node.floor
+        elif from_node:
+            selected_floor = from_node.floor
+        else:
+            selected_floor = "1"
+
+    # Per-node floor plan data for the split view
+    from_floor_data = _get_node_floor_data(from_node, BUILDINGS)
+    to_floor_data = _get_node_floor_data(to_node, BUILDINGS)
 
     # Gather per-building floor plan data for the selected floor level.
-    # Match buildings whose campus slug matches the selected campus value
-    # (case-insensitive, hyphen/space flexible) so all three St Lucia buildings
-    # appear together in the combined panel.
     def _campus_slug(raw):
         return raw.lower().replace(" ", "-")
 
@@ -325,7 +503,11 @@ def home(request):
         "floor_options": FLOOR_OPTIONS,
         "campus_options": CAMPUS_OPTIONS,
         "map_floors": map_floors,
+        "from_floor_data": from_floor_data,
+        "to_floor_data": to_floor_data,
+        "uq_map_embed_url": _uq_map_embed_url(to_node or from_node, selected_floor),
         "path_fp_coords_json": json.dumps(_get_path_fp_coords(path, BUILDINGS)),
+        "walking_minutes": walking_minutes,
     })
 
 
@@ -357,3 +539,13 @@ def building_detail(request, building_id):
         "current_floor": current_floor,
         "selected_room": selected_room,
     })
+
+
+def reminders(request):
+    """Serve the smart reminders app"""
+    return render(request, "maps/index.html")
+
+
+def onboarding(request):
+    """Welcome / onboarding flow (3 steps)."""
+    return render(request, "maps/onboarding.html")

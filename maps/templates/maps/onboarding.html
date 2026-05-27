@@ -1,0 +1,985 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Welcome – UQ Indoor Maps</title>
+    <style>
+        :root {
+            --uq-purple:  #51247A;
+            --uq-dark:    #3b1860;
+            --uq-mid:     #6b35a0;
+            --white:      #ffffff;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            font-family: Arial, sans-serif;
+            background: var(--uq-purple);
+            overflow: hidden;
+        }
+
+        /* ── Outer shell ── */
+        .shell {
+            height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--uq-purple);
+        }
+
+        /* ── Phone-width card ── */
+        .phone {
+            width: min(440px, 100vw);
+            height: 100dvh;
+            position: relative;
+            overflow: hidden;
+            background: var(--uq-purple);
+        }
+
+        /* ── Step slides ── */
+        .step {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 48px 32px 44px;
+            background: var(--uq-purple);
+            transition: transform 0.42s cubic-bezier(0.55, 0, 0.1, 1),
+                        opacity  0.42s ease;
+            will-change: transform, opacity;
+        }
+
+        .step.hidden-left  { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+        .step.hidden-right { transform: translateX(100%);  opacity: 0; pointer-events: none; }
+        .step.active       { transform: translateX(0);     opacity: 1; pointer-events: auto; }
+
+        /* ── Step top bar (logo + optional back btn) ── */
+        .step-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            min-height: 52px;
+        }
+
+        .brand-logo {
+            height: 52px;
+            width: auto;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        /* Back button */
+        .btn-back {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.15s;
+            padding: 0;
+        }
+
+        .btn-back:hover  { background: rgba(255,255,255,0.25); }
+        .btn-back:active { background: rgba(255,255,255,0.35); }
+
+        .btn-back svg {
+            display: block;
+        }
+
+        /* Invisible placeholder so logo stays visually centred on step 1 */
+        .topbar-spacer {
+            width: 40px;
+            flex-shrink: 0;
+        }
+
+        /* ── Step 1: Welcome hero ── */
+        .welcome-hero {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .welcome-headline {
+            font-size: clamp(32px, 9vw, 44px);
+            font-weight: 800;
+            color: var(--white);
+            line-height: 1.16;
+            letter-spacing: -0.015em;
+        }
+
+        .welcome-actions {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding-top: 0;
+            padding-bottom: 8px;
+        }
+
+        /* ── Step 2: Permissions ── */
+        .perm-heading {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .perm-eyebrow {
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.55);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .perm-title {
+            font-size: clamp(26px, 7vw, 34px);
+            font-weight: 800;
+            color: var(--white);
+            line-height: 1.22;
+        }
+
+        .perm-body {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* ── Toggle card ── */
+        .toggle-card {
+            background: var(--white);
+            border-radius: 18px;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.22);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s;
+        }
+
+        .toggle-card:active { background: #f5f5f5; }
+
+        .toggle-icon {
+            font-size: 28px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .toggle-label { flex: 1; }
+
+        .toggle-label-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #2d2926;
+        }
+
+        .toggle-label-desc {
+            font-size: 12px;
+            color: #7a7068;
+            margin-top: 2px;
+            line-height: 1.35;
+        }
+
+        .toggle-switch {
+            width: 48px;
+            height: 28px;
+            background: #d0c8e0;
+            border-radius: 999px;
+            position: relative;
+            flex-shrink: 0;
+            transition: background 0.22s;
+        }
+
+        .toggle-switch.on { background: var(--uq-purple); }
+
+        .toggle-thumb {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.22);
+            transition: left 0.22s cubic-bezier(0.35, 0, 0.25, 1);
+        }
+
+        .toggle-switch.on .toggle-thumb { left: 24px; }
+
+        /* ── Step 3: Timetable ── */
+        .tt-heading {
+            flex-shrink: 0;
+            margin-bottom: 4px;
+        }
+
+        .tt-title {
+            font-size: clamp(22px, 6vw, 30px);
+            font-weight: 800;
+            color: var(--white);
+            line-height: 1.2;
+            margin-top: 20px;
+        }
+
+        .tt-date {
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.52);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-top: 6px;
+        }
+
+        .tt-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px 0 4px;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ── Class card ── */
+        .class-card {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 16px;
+            padding: 16px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            flex-shrink: 0;
+        }
+
+        .class-card.next {
+            background: rgba(255,255,255,0.96);
+            border-color: transparent;
+            box-shadow: 0 6px 28px rgba(0,0,0,0.22);
+        }
+
+        .class-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .class-time {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .class-card.next .class-time { color: var(--uq-purple); }
+
+        .class-next-badge {
+            background: var(--uq-purple);
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            border-radius: 999px;
+            padding: 3px 9px;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+
+        .class-code {
+            font-size: 17px;
+            font-weight: 800;
+            color: white;
+            line-height: 1.2;
+        }
+
+        .class-card.next .class-code { color: #2d2926; }
+
+        .class-type {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.65);
+        }
+
+        .class-card.next .class-type { color: #7a7068; }
+
+        .class-location {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12.5px;
+            color: rgba(255,255,255,0.75);
+            font-weight: 500;
+        }
+
+        .class-card.next .class-location { color: #4f4840; }
+
+        .class-countdown {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .class-card.next .class-countdown { color: var(--uq-purple); }
+
+        .class-get-dir {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            background: var(--uq-purple);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 9px 14px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            font-family: inherit;
+            align-self: flex-start;
+            transition: background 0.15s;
+        }
+
+        .class-get-dir:hover { background: #3d1a5e; }
+
+        .tt-actions {
+            flex-shrink: 0;
+            padding-top: 8px;
+        }
+
+        /* ── Shared buttons ── */
+        .btn-white {
+            width: 100%;
+            background: var(--white);
+            color: var(--uq-purple);
+            border: none;
+            border-radius: 16px;
+            padding: 17px 20px;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 0.01em;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.22);
+            transition: background 0.15s, transform 0.1s;
+        }
+
+        .btn-white:hover  { background: #f3eeff; }
+        .btn-white:active { transform: scale(0.98); }
+
+        .btn-outline {
+            width: 100%;
+            background: transparent;
+            color: rgba(255,255,255,0.72);
+            border: none;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 0.01em;
+            transition: color 0.15s;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .btn-outline:hover { color: white; }
+
+        /* ── Step dots ── */
+        .step-dots {
+            display: flex;
+            justify-content: center;
+            gap: 7px;
+            padding-top: 18px;
+        }
+
+        .step-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.28);
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .step-dot.active {
+            background: white;
+            transform: scale(1.25);
+        }
+
+    </style>
+</head>
+<body>
+<div class="shell">
+<div class="phone">
+
+    {# ══════════════════════════════════════════════
+       STEP 1 — Welcome
+    ══════════════════════════════════════════════ #}
+    <div class="step active" id="step-1">
+
+        <!-- Top bar: no back button on first step -->
+        <div class="step-topbar">
+            <img class="brand-logo" src="{% static 'uq.png' %}" alt="UQ Indoor Maps">
+        </div>
+
+        <!-- Headline -->
+        <div class="welcome-hero">
+            <h1 class="welcome-headline">
+                Never wonder if<br>you'll make it to<br>class on time.
+            </h1>
+        </div>
+
+        <!-- Actions -->
+        <div class="welcome-actions">
+            <button class="btn-white" id="btn-connect" type="button">
+                Connect to My Timetable
+            </button>
+            <button class="btn-outline" id="btn-skip" type="button">Skip for now</button>
+        </div>
+
+        <!-- Dots -->
+        <div class="step-dots" aria-hidden="true">
+            <div class="step-dot active" id="dot-1"></div>
+            <div class="step-dot"        id="dot-2"></div>
+            <div class="step-dot"        id="dot-3"></div>
+        </div>
+
+    </div>
+
+    {# ══════════════════════════════════════════════
+       STEP 2 — Timetable preview (dummy data)
+    ══════════════════════════════════════════════ #}
+    <div class="step hidden-right" id="step-2">
+
+        <!-- Top bar: back to step 1 -->
+        <div class="step-topbar">
+            <button class="btn-back" id="btn-back-3" type="button" aria-label="Go back">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                     stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 5l-7 7 7 7"/>
+                </svg>
+            </button>
+            <img class="brand-logo" src="{% static 'uq.png' %}" alt="UQ Indoor Maps">
+            <div class="topbar-spacer"></div>
+        </div>
+
+        <div class="tt-heading">
+            <h2 class="tt-title">Here's what we<br>found for today.</h2>
+            <p class="tt-date" id="today-date">Today</p>
+        </div>
+
+        <div class="tt-list">
+
+            <!-- Next class (highlighted) -->
+            <div class="class-card next">
+                <div class="class-card-top">
+                    <span class="class-time">9:00 AM – 11:00 AM</span>
+                    <span class="class-next-badge">Up next</span>
+                </div>
+                <div class="class-code">COMP2002</div>
+                <div class="class-type">Programming in the Large &mdash; Tutorial</div>
+                <div class="class-location">
+                    <svg width="12" height="15" viewBox="0 0 24 30" fill="none" aria-hidden="true">
+                        <path d="M12 1C7 1 3 5 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-5-4-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"
+                              fill="#51247A"/>
+                    </svg>
+                    Building 62 &mdash; Room 213
+                </div>
+                <a class="class-get-dir" href="{% url 'home' %}?to=213">
+                    Get Directions
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+            <!-- Second class -->
+            <div class="class-card">
+                <div class="class-card-top">
+                    <span class="class-time">11:00 AM – 12:00 PM</span>
+                </div>
+                <div class="class-code">MATH1051</div>
+                <div class="class-type">Calculus &amp; Linear Algebra I &mdash; Lecture</div>
+                <div class="class-location">
+                    <svg width="12" height="15" viewBox="0 0 24 30" fill="none" aria-hidden="true">
+                        <path d="M12 1C7 1 3 5 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-5-4-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"
+                              fill="rgba(255,255,255,0.65)"/>
+                    </svg>
+                    Building 63 &mdash; Room 348 (Lecture Theatre)
+                </div>
+                <a class="class-get-dir"
+                   href="{% url 'home' %}?to=348&from=213"
+                   style="background:rgba(255,255,255,0.92);color:#51247A;">
+                    Get Directions
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+            <!-- Third class -->
+            <div class="class-card">
+                <div class="class-card-top">
+                    <span class="class-time">2:00 PM – 4:00 PM</span>
+                </div>
+                <div class="class-code">ENGG1200</div>
+                <div class="class-type">Engineering Modelling &amp; Problem Solving &mdash; Tutorial</div>
+                <div class="class-location">
+                    <svg width="12" height="15" viewBox="0 0 24 30" fill="none" aria-hidden="true">
+                        <path d="M12 1C7 1 3 5 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-5-4-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"
+                              fill="rgba(255,255,255,0.65)"/>
+                    </svg>
+                    Building 69 &mdash; Room 304 (Computing Lab)
+                </div>
+                <a class="class-get-dir"
+                   href="{% url 'home' %}?to=304&from=348"
+                   style="background:rgba(255,255,255,0.92);color:#51247A;">
+                    Get Directions
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+
+        </div>
+
+        <div class="tt-actions">
+            <button class="btn-white" id="btn-start" type="button">
+                Start navigating!
+            </button>
+        </div>
+
+        <div class="step-dots" aria-hidden="true">
+            <div class="step-dot" id="dot-1c"></div>
+            <div class="step-dot active" id="dot-2c"></div>
+            <div class="step-dot" id="dot-3c"></div>
+        </div>
+
+    </div>
+
+    {# ══════════════════════════════════════════════
+       STEP 3 — Permissions (reminders)
+    ══════════════════════════════════════════════ #}
+    <div class="step hidden-right" id="step-3">
+
+        <!-- Top bar: back to step 2 (timetable) or step 1 (welcome) depending on path -->
+        <div class="step-topbar">
+            <button class="btn-back" id="btn-back-2" type="button" aria-label="Go back">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                     stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 5l-7 7 7 7"/>
+                </svg>
+            </button>
+            <img class="brand-logo" src="{% static 'uq.png' %}" alt="UQ Indoor Maps">
+            <div class="topbar-spacer"></div>
+        </div>
+
+        <div class="perm-heading">
+            <span class="perm-eyebrow">Permissions</span>
+            <h2 class="perm-title">One quick thing<br>before we start.</h2>
+        </div>
+
+        <div class="perm-body">
+            <!-- Departure Reminders toggle -->
+            <div class="toggle-card" id="toggle-reminders" role="switch" aria-checked="false"
+                 tabindex="0" aria-label="Departure Reminders">
+                <span class="toggle-icon" aria-hidden="true">🔔</span>
+                <div class="toggle-label">
+                    <div class="toggle-label-title">Departure Reminders</div>
+                    <div class="toggle-label-desc">Get nudged when it's time to leave for your next class</div>
+                </div>
+                <div class="toggle-switch" id="switch-reminders">
+                    <div class="toggle-thumb"></div>
+                </div>
+            </div>
+
+            <button class="btn-white" id="btn-permissions-done" type="button"
+                    style="display:block; text-align:center;">
+                Got it, let's go!
+            </button>
+        </div>
+
+        <div class="step-dots" aria-hidden="true">
+            <div class="step-dot" id="dot-1b"></div>
+            <div class="step-dot" id="dot-2b"></div>
+            <div class="step-dot active" id="dot-3b"></div>
+        </div>
+
+    </div>
+
+</div>
+</div>
+
+<script>
+(function () {
+    // ── Step navigation ──────────────────────────────────────────────────────
+    var steps = [
+        document.getElementById('step-1'),
+        document.getElementById('step-2'),
+        document.getElementById('step-3'),
+    ];
+    var current = 0;
+    // Tracks which step step-2 (reminders) was reached from, so the back button
+    // returns to the right place: 0 = came from Welcome via "Skip", 2 = came from
+    // Timetable via "Start navigating!"
+    // Tracks which step the reminders page (step-3, index 2) was reached from:
+    // 0 = Welcome via "Skip for now", 1 = Timetable via "Start navigating!"
+    var remindersPrevStep = 0;
+
+    function goTo(next) {
+        var prev = current;
+        if (next === prev) return;
+        var dir = next > prev ? 1 : -1;
+
+        steps[prev].classList.remove('active');
+        steps[prev].classList.add(dir > 0 ? 'hidden-left' : 'hidden-right');
+
+        steps[next].classList.remove('hidden-left', 'hidden-right');
+        void steps[next].offsetWidth; // force reflow so transition plays
+        steps[next].classList.add('active');
+
+        current = next;
+    }
+
+    // Back from timetable (step-2, index 1) → always Welcome
+    document.getElementById('btn-back-3').addEventListener('click', function () { goTo(0); });
+    // Back from reminders (step-3, index 2) → wherever we came from
+    document.getElementById('btn-back-2').addEventListener('click', function () {
+        goTo(remindersPrevStep);
+    });
+
+    // Connect to My Timetable → step-2 (timetable preview, index 1)
+    document.getElementById('btn-connect').addEventListener('click', function () {
+        goTo(1);
+    });
+
+    // Skip for now → step-3 (reminders, index 2), back returns to Welcome
+    document.getElementById('btn-skip').addEventListener('click', function () {
+        remindersPrevStep = 0;
+        goTo(2);
+    });
+
+    // ── Departure Reminders toggle ───────────────────────────────────────────
+    var toggleCard   = document.getElementById('toggle-reminders');
+    var toggleSwitch = document.getElementById('switch-reminders');
+    var testBtn      = document.getElementById('btn-test-notif');
+
+    function flipToggle() {
+        var on = toggleSwitch.classList.toggle('on');
+        toggleCard.setAttribute('aria-checked', on ? 'true' : 'false');
+        // Show/hide the test button alongside the toggle state
+        testBtn.style.display = on ? 'block' : 'none';
+    }
+
+    toggleCard.addEventListener('click', flipToggle);
+    toggleCard.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flipToggle(); }
+    });
+
+    try {
+        if (localStorage.getItem('uq_reminders') === '1') {
+            toggleSwitch.classList.add('on');
+            toggleCard.setAttribute('aria-checked', 'true');
+            testBtn.style.display = 'block';
+        }
+    } catch (storageReadErr) { console.warn('localStorage unavailable', storageReadErr); }
+
+    // ── "Got it, let's go!" — save preference then navigate ────────────────
+    // Departure scheduling happens on the home page (reads uq_schedule +
+    // uq_reminders from localStorage and fires in-app toasts from there).
+    document.getElementById('btn-permissions-done').addEventListener('click', function () {
+        var isOn = toggleSwitch.classList.contains('on');
+        try { localStorage.setItem('uq_reminders', isOn ? '1' : '0'); } catch (storageErr) { console.warn('localStorage unavailable', storageErr); }
+        globalThis.location.href = '/';   // → home
+    });
+
+    // ── In-page test toast (shown on this page, no OS permission needed) ─────
+    testBtn.addEventListener('click', function () {
+        showOnboardingToast({
+            title:  'Time to leave for COMP2002! 🔔',
+            body:   'Tutorial · Building 62, Room 213  ·  🚶 10-min walk',
+        });
+    });
+
+    function showOnboardingToast(opts) {
+        var el = document.getElementById('ob-toast');
+        el.querySelector('.ob-toast-title').textContent = opts.title || '';
+        el.querySelector('.ob-toast-body').textContent  = opts.body  || '';
+
+        el.classList.remove('ob-toast-hidden');
+
+        var bar = el.querySelector('.ob-toast-bar');
+        bar.style.transition = 'none';
+        bar.style.width = '100%';
+        // Reading offsetWidth forces a layout flush so the browser registers the
+        // width:100% before we re-apply the transition (otherwise it skips the animation).
+        if (bar.offsetWidth >= 0) { bar.style.transition = 'width 6000ms linear'; }
+        bar.style.width = '0%';
+
+        if (el._timer) clearTimeout(el._timer);
+        el._timer = setTimeout(function () { el.classList.add('ob-toast-hidden'); }, 6000);
+    }
+
+    document.getElementById('ob-toast-close').addEventListener('click', function () {
+        var el = document.getElementById('ob-toast');
+        if (el._timer) clearTimeout(el._timer);
+        el.classList.add('ob-toast-hidden');
+    });
+
+    // ── ICS upload + timetable preview ──────────────────────────────────────
+
+    var DEMO_SCHEDULE = {
+        classes: [
+            { code:'COMP2002', type:'Tutorial',  building:'Building 62', room:'213', time_h:9,  time_m:0,  to:'213', from:'',    walk_min:10 },
+            { code:'MATH1051', type:'Lecture',   building:'Building 63', room:'348', time_h:11, time_m:0,  to:'348', from:'213', walk_min:12 },
+            { code:'ENGG1200', type:'Tutorial',  building:'Building 69', room:'304', time_h:14, time_m:0,  to:'304', from:'348', walk_min:8  }
+        ]
+    };
+
+    // CSRF helper
+    function getCsrfToken() {
+        var match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    // Convert API response classes → uq_schedule format (today's classes only).
+    // Falls back to all classes if none match today's weekday.
+    function apiClassesToSchedule(apiClasses) {
+        var todayDow = new Date().getDay();   // 0=Sun … 6=Sat
+
+        // Sort by start_time
+        var sorted = apiClasses.slice().sort(function (a, b) {
+            return new Date(a.start_time) - new Date(b.start_time);
+        });
+
+        // Prefer today's day-of-week; fall back to all if none match
+        var todayOnly = sorted.filter(function (c) {
+            return new Date(c.start_time).getDay() === todayDow;
+        });
+        var source = todayOnly.length ? todayOnly : sorted;
+
+        // Deduplicate by code+time (recurring events repeat same slot)
+        var seen = {};
+        var unique = source.filter(function (c) {
+            var dt  = new Date(c.start_time);
+            var key = c.course_code + '_' + dt.getHours() + '_' + dt.getMinutes();
+            if (seen[key]) return false;
+            seen[key] = true;
+            return true;
+        });
+
+        return {
+            classes: unique.map(function (c, i) {
+                var dt   = new Date(c.start_time);
+                var prev = i > 0 ? unique[i - 1] : null;
+                return {
+                    code:     c.course_code,
+                    type:     c.session_type,
+                    building: c.building,
+                    room:     c.room_number,
+                    time_h:   dt.getHours(),
+                    time_m:   dt.getMinutes(),
+                    to:       c.room_number,
+                    from:     prev ? prev.room_number : '',
+                    walk_min: c.estimated_travel_time_minutes || 10,
+                };
+            })
+        };
+    }
+
+    // Persist schedule to localStorage
+    function saveSchedule(sched) {
+        try { localStorage.setItem('uq_schedule', JSON.stringify(sched)); }
+        catch (e) { console.warn('Could not save schedule', e); }
+    }
+
+    // ── Shared render helpers ────────────────────────────────────────────────
+    function pad(n)  { return n < 10 ? '0' + n : '' + n; }
+    function fmtH(h, m) {
+        var suf = h < 12 ? 'AM' : 'PM';
+        return (h % 12 || 12) + ':' + pad(m) + ' ' + suf;
+    }
+    function esc(s) {
+        return String(s).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    }
+
+    // Render class cards into #tt-class-list and switch to preview sub-state
+    function showPreview(schedule) {
+        var listEl    = document.getElementById('tt-class-list');
+        var dateEl    = document.getElementById('today-date');
+        var uploadSt  = document.getElementById('tt-upload-state');
+        var previewSt = document.getElementById('tt-preview-state');
+
+        // Date label
+        var d      = new Date();
+        var DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        if (dateEl) {
+            dateEl.textContent = 'Today — ' + DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
+        }
+
+        var now    = new Date();
+        var nowMin = now.getHours() * 60 + now.getMinutes();
+
+        // Find next class
+        var nextIdx = -1;
+        schedule.classes.forEach(function (c, i) {
+            if (nextIdx < 0 && c.time_h * 60 + c.time_m > nowMin) nextIdx = i;
+        });
+
+        var PIN_NEXT  = '#51247A';
+        var PIN_OTHER = 'rgba(255,255,255,0.65)';
+        var PIN_PATH  = 'M12 1C7 1 3 5 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-5-4-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z';
+        var DIR_ARROW = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+
+        listEl.innerHTML = schedule.classes.map(function (c, i) {
+            var isNext  = i === nextIdx;
+            var pinFill = isNext ? PIN_NEXT : PIN_OTHER;
+            var dirStyle = isNext ? '' : 'background:rgba(255,255,255,0.92);color:#51247A;';
+            var dirHref  = '/?to=' + encodeURIComponent(c.to)
+                         + (c.from ? '&from=' + encodeURIComponent(c.from) : '');
+            return (
+                '<div class="class-card' + (isNext ? ' next' : '') + '">'
+                + '<div class="class-card-top">'
+                +   '<span class="class-time">' + fmtH(c.time_h, c.time_m) + '</span>'
+                +   (isNext ? '<span class="class-next-badge">Up next</span>' : '')
+                + '</div>'
+                + '<div class="class-code">' + esc(c.code) + '</div>'
+                + '<div class="class-type">' + esc(c.type) + '</div>'
+                + '<div class="class-location">'
+                +   '<svg width="12" height="15" viewBox="0 0 24 30" fill="none" aria-hidden="true">'
+                +     '<path d="' + PIN_PATH + '" fill="' + pinFill + '"/></svg>'
+                +   esc(c.building) + ' &mdash; Room ' + esc(c.room)
+                + '</div>'
+                + '<a class="class-get-dir" href="' + dirHref + '" style="' + dirStyle + '">'
+                +   'Get Directions ' + DIR_ARROW
+                + '</a>'
+                + '</div>'
+            );
+        }).join('');
+
+        uploadSt.style.display  = 'none';
+        previewSt.style.display = 'flex';
+        previewSt.style.flexDirection = 'column';
+    }
+
+    // Status helper
+    function setStatus(msg, isError) {
+        var el = document.getElementById('tt-upload-status');
+        el.innerHTML = msg;
+        el.className = 'tt-upload-status' + (isError ? ' is-error' : '');
+    }
+
+    // Upload the .ics file to the backend
+    async function uploadICS(file) {
+        setStatus('<span class="tt-spinner"></span>Reading your timetable…');
+
+        var formData = new FormData();
+        formData.append('ics_file', file);
+
+        try {
+            var resp = await fetch('/api/timetable/upload-timetable/', {
+                method: 'POST',
+                body:   formData,
+                headers: { 'X-CSRFToken': getCsrfToken() },
+            });
+            var data = await resp.json();
+
+            if (resp.ok && data.timetable && data.timetable.classes) {
+                var sched = apiClassesToSchedule(data.timetable.classes);
+                if (sched.classes.length) {
+                    setStatus('');
+                } else {
+                    setStatus('⚠️ No classes found for today — showing full timetable.');
+                    sched = apiClassesToSchedule(data.timetable.classes);
+                }
+                saveSchedule(sched);
+                showPreview(sched);
+            } else {
+                setStatus('❌ Couldn\'t read file — is it a valid UQ timetable .ics?', true);
+            }
+        } catch (netErr) {
+            setStatus('❌ Network error — please try again.', true);
+            console.warn('ICS upload failed', netErr);
+        }
+    }
+
+    // Wire up the drop area button + hidden file input
+    var dropBtn  = document.getElementById('tt-drop-area');
+    var fileInput = document.getElementById('tt-ics-input');
+
+    dropBtn.addEventListener('click', function () { fileInput.click(); });
+
+    fileInput.addEventListener('change', function () {
+        if (fileInput.files && fileInput.files[0]) {
+            uploadICS(fileInput.files[0]);
+        }
+    });
+
+    // Drag-and-drop
+    dropBtn.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        dropBtn.classList.add('dragover');
+    });
+    dropBtn.addEventListener('dragleave', function () {
+        dropBtn.classList.remove('dragover');
+    });
+    dropBtn.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropBtn.classList.remove('dragover');
+        var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) uploadICS(file);
+    });
+
+    // "Use demo timetable instead"
+    document.getElementById('btn-use-demo').addEventListener('click', function () {
+        saveSchedule(DEMO_SCHEDULE);
+        showPreview(DEMO_SCHEDULE);
+    });
+
+    // "Start navigating!" — schedule already saved by upload/demo; just advance
+    document.getElementById('btn-start').addEventListener('click', function () {
+        remindersPrevStep = 1;
+        goTo(2);
+    });
+
+    // ── Today's date label ───────────────────────────────────────────────────
+    try {
+        var d      = new Date();
+        var days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var existingDateEl = document.getElementById('today-date');
+        if (existingDateEl) {
+            existingDateEl.textContent = 'Today — ' + days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()];
+        }
+    } catch (dateErr) { console.warn('Date label failed', dateErr); }
+
+}());
+</script>
+</body>
+</html>

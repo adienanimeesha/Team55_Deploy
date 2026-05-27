@@ -1,1414 +1,111 @@
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>UQ Indoor Maps</title>
-    <style>
-        :root {
-            --uq-purple: #51247A;
-            --uq-purple-soft: #efe6f7;
-            --ink: #2d2926;
-            --muted: #6f6860;
-            --map-bg: #f7f3eb;
-            --building: #d6d0c5;
-            --building-dark: #bdb5a8;
-            --path: rgba(255, 255, 255, 0.9);
-            --grass: #bfe7b7;
-            --water: #c9e8f0;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            color: var(--ink);
-            background: #f4f1ec;
-        }
-
-        .app {
-            min-height: 100vh;
-            display: grid;
-            grid-template-rows: 70px 1fr;
-        }
-
-        .topbar {
-            background: var(--uq-purple);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 28px;
-            box-shadow: 0 3px 16px rgba(0, 0, 0, 0.18);
-            z-index: 20;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            font-weight: 800;
-            font-size: 23px;
-        }
-
-        .brand-mark {
-            width: 36px;
-            height: 36px;
-            border: 2px solid rgba(255, 255, 255, 0.9);
-            display: grid;
-            place-items: center;
-            font-size: 18px;
-            font-weight: 800;
-            letter-spacing: 0;
-        }
-
-        .top-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .top-pill {
-            background: white;
-            color: var(--uq-purple);
-            border-radius: 12px;
-            padding: 11px 14px;
-            font-weight: 800;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
-        }
-
-        .main {
-            display: grid;
-            grid-template-columns: 390px minmax(0, 1fr);
-            min-height: 0;
-            transition: grid-template-columns 0.28s ease;
-        }
-
-        /* collapsed state — sidebar slides to zero width */
-        .main.sidebar-collapsed {
-            grid-template-columns: 0px minmax(0, 1fr);
-        }
-
-        .sidebar {
-            background: white;
-            border-right: 1px solid #e5ded6;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 18px;
-            box-shadow: 5px 0 16px rgba(0, 0, 0, 0.08);
-            z-index: 10;
-            transition: padding 0.28s ease;
-            /* prevent content peeking out during collapse */
-            min-width: 0;
-        }
-
-        .main.sidebar-collapsed .sidebar {
-            padding: 0;
-            overflow: hidden;
-            pointer-events: none;
-        }
-
-        /* ── toggle button — anchored to the sidebar/map border, vertically centred ── */
-        .sidebar-toggle {
-            /* position relative to #main-layout which covers the full viewport below the topbar */
-            position: fixed;
-            top: 50vh;                 /* true vertical centre of the screen */
-            transform: translateY(-50%);
-            left: 390px;
-            z-index: 40;
-            width: 28px;
-            height: 56px;
-            background: var(--uq-purple);
-            border: none;
-            border-radius: 0 12px 12px 0;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 3px 0 14px rgba(81, 36, 122, 0.35);
-            transition: left 0.28s ease, background 0.15s;
-            padding: 0;
-            color: white;
-            font-size: 16px;
-            line-height: 1;
-        }
-
-        .sidebar-toggle:hover {
-            background: #3d1a5e;
-        }
-
-        /* when sidebar is collapsed, JS updates left inline; CSS fallback: */
-        .sidebar-toggle.is-collapsed {
-            left: 0;
-            border-radius: 0 12px 12px 0;
-        }
-
-        /* arrow icon flips when collapsed */
-        .sidebar-toggle .toggle-arrow {
-            display: inline-block;
-            transition: transform 0.28s ease;
-            font-style: normal;
-        }
-
-        .main.sidebar-collapsed .sidebar-toggle .toggle-arrow {
-            transform: rotate(180deg);
-        }
-
-        .panel {
-            border: 1px solid #ece6df;
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 14px;
-            background: white;
-        }
-
-        .panel-title {
-            font-size: 22px;
-            font-weight: 800;
-            margin-bottom: 6px;
-        }
-
-        .hint {
-            color: var(--muted);
-            line-height: 1.4;
-            margin: 0 0 14px;
-            font-size: 14px;
-        }
-
-        .route-form {
-            display: grid;
-            gap: 10px;
-        }
-
-        .input-row {
-            display: grid;
-            grid-template-columns: 26px 1fr;
-            align-items: center;
-            gap: 8px;
-            border: 1px solid #ddd8d1;
-            border-radius: 12px;
-            padding: 9px 11px;
-            background: #fbfaf8;
-        }
-
-        .dot {
-            width: 13px;
-            height: 13px;
-            border-radius: 50%;
-            justify-self: center;
-            background: var(--uq-purple);
-            box-shadow: 0 0 0 4px var(--uq-purple-soft);
-        }
-
-        .dot.to {
-            background: #2d2926;
-            box-shadow: 0 0 0 4px #eee9e3;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            border: none;
-            outline: none;
-            background: transparent;
-            font-size: 15px;
-            color: var(--ink);
-            min-width: 0;
-        }
-
-        .btn {
-            border: none;
-            background: var(--uq-purple);
-            color: white;
-            border-radius: 12px;
-            padding: 13px 16px;
-            font-weight: 800;
-            font-size: 15px;
-            cursor: pointer;
-        }
-
-        .search-row {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 8px;
-            border: 1px solid #ddd8d1;
-            border-radius: 12px;
-            padding: 8px;
-            background: #fbfaf8;
-        }
-
-        .search-row input {
-            padding: 6px 6px;
-        }
-
-        .mini-btn {
-            border: 1px solid var(--uq-purple);
-            color: var(--uq-purple);
-            background: white;
-            border-radius: 10px;
-            padding: 8px 11px;
-            font-weight: 800;
-            cursor: pointer;
-        }
-
-        .confirmed,
-        .error {
-            border-radius: 12px;
-            padding: 10px 12px;
-            margin-top: 10px;
-            line-height: 1.35;
-            font-size: 14px;
-        }
-
-        .confirmed {
-            background: var(--uq-purple-soft);
-            color: var(--uq-purple);
-            font-weight: 800;
-        }
-
-        .error {
-            background: #fff0f0;
-            color: #b53333;
-            border: 1px solid #f0b7b7;
-        }
-
-        .candidate-link,
-        .building-link,
-        .room-chip {
-            text-decoration: none;
-        }
-
-        .candidate-link {
-            display: block;
-            border: 1px solid #ded8d0;
-            border-radius: 12px;
-            padding: 11px;
-            color: var(--ink);
-            margin-top: 8px;
-        }
-
-        .candidate-link:hover,
-        .building-card:hover {
-            border-color: var(--uq-purple);
-            background: #fbf7ff;
-        }
-
-        .candidate-meta,
-        .building-meta,
-        .step-meta {
-            color: var(--muted);
-            font-size: 13px;
-            margin-top: 3px;
-        }
-
-        .route-summary {
-            font-weight: 800;
-            margin-bottom: 10px;
-        }
-
-        .step {
-            display: grid;
-            grid-template-columns: 28px 1fr;
-            gap: 10px;
-            padding: 11px 0;
-            border-top: 1px solid #eee9e3;
-        }
-
-        .step-num {
-            width: 26px;
-            height: 26px;
-            border-radius: 50%;
-            display: grid;
-            place-items: center;
-            background: var(--uq-purple);
-            color: white;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        .simplified-directions {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-        }
-
-        .direction-step {
-            display: grid;
-            grid-template-columns: 28px 1fr;
-            gap: 10px;
-            padding: 14px 0;
-            border-top: 1px solid #eee9e3;
-        }
-
-        .direction-step:first-child {
-            border-top: none;
-        }
-
-        .step-content {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .step-description {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--ink);
-            line-height: 1.4;
-        }
-
-        .step-meta {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        .secondary {
-            font-size: 11px;
-            color: #999;
-            font-weight: 400;
-        }
-
-        .tag {
-            display: inline-block;
-            margin-left: 5px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            background: var(--uq-purple-soft);
-            color: var(--uq-purple);
-            font-size: 11px;
-            font-weight: 800;
-        }
-
-        /* Floor Visualization Styles */
-        .floor-accordion {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            border: 1px solid #eee9e3;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .floor-section {
-            border-bottom: 1px solid #eee9e3;
-        }
-
-        .floor-section:last-child {
-            border-bottom: none;
-        }
-
-        .floor-header {
-            width: 100%;
-            background: var(--uq-purple-soft);
-            border: none;
-            padding: 12px 14px;
-            text-align: left;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 600;
-            color: var(--ink);
-            transition: background 0.2s ease;
-        }
-
-        .floor-header:hover {
-            background: #e8d9f5;
-        }
-
-        .chevron {
-            transition: transform 0.2s ease;
-            display: inline-block;
-        }
-
-        .floor-header.open .chevron {
-            transform: rotate(180deg);
-        }
-
-        .floor-content {
-            padding: 14px;
-            background: white;
-        }
-
-        .floor-map-container {
-            position: relative;
-            background: #f7f3eb;
-            border-radius: 6px;
-            overflow: hidden;
-            margin-bottom: 12px;
-            min-height: 200px;
-        }
-
-        .path-overlay {
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-        }
-
-        .step-label {
-            font-family: Arial, sans-serif;
-            font-weight: bold;
-        }
-
-        .turn-indicator {
-            font-family: Arial, sans-serif;
-            font-weight: bold;
-        }
-
-        .floor-segments {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding-top: 10px;
-            border-top: 1px solid #eee9e3;
-        }
-
-        .floor-segment-item {
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-            font-size: 13px;
-        }
-
-        .direction-badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 4px;
-            color: white;
-            font-size: 11px;
-            font-weight: 700;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .segment-text {
-            color: var(--ink);
-            line-height: 1.3;
-        }
-
-        .floor-transition {
-            margin-top: 14px;
-            padding-top: 14px;
-            border-top: 2px solid var(--uq-purple-soft);
-        }
-
-        .transition-connector {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            background: var(--uq-purple-soft);
-            border-radius: 6px;
-        }
-
-        .transition-icon {
-            font-size: 20px;
-        }
-
-        .transition-text {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--uq-purple);
-        }
-
-        .building-card {
-            display: block;
-            border: 1px solid #ece6df;
-            border-radius: 14px;
-            padding: 14px;
-            margin-bottom: 10px;
-            color: var(--ink);
-            background: white;
-        }
-
-        .building-title {
-            font-size: 17px;
-            font-weight: 800;
-        }
-
-        .building-description {
-            margin: 8px 0 0;
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.35;
-        }
-
-        .room-matches {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #eee9e3;
-        }
-
-        .room-chip {
-            display: inline-block;
-            background: var(--uq-purple-soft);
-            color: var(--uq-purple);
-            padding: 7px 9px;
-            border-radius: 999px;
-            margin: 4px 4px 0 0;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        .empty {
-            color: var(--muted);
-            line-height: 1.4;
-        }
-
-        .map-wrap {
-            position: relative;
-            overflow: hidden;
-            background: var(--water);
-        }
-
-        /* ensure the toggle button sits in the right place relative to .main */
-        #main-layout {
-            position: relative;
-        }
-
-        .map-canvas {
-            position: absolute;
-            inset: 0;
-            z-index: 1;
-            background:
-                radial-gradient(circle at 82% 76%, rgba(135, 207, 123, 0.55) 0 6%, transparent 6.3%),
-                radial-gradient(circle at 68% 27%, rgba(135, 207, 123, 0.48) 0 7%, transparent 7.3%),
-                linear-gradient(142deg, transparent 0 74%, rgba(198, 232, 240, 0.95) 74.2% 100%),
-                var(--map-bg);
-        }
-
-        /* SVG campus overview fills the entire canvas */
-        .campus-svg {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        .map-toolbar {
-            position: absolute;
-            top: 18px;
-            right: 22px;
-            display: flex;
-            gap: 10px;
-            z-index: 8;
-        }
-
-        .map-control {
-            background: white;
-            color: var(--uq-purple);
-            border-radius: 12px;
-            padding: 12px 14px;
-            font-weight: 800;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.16);
-        }
-
-        .road,
-        .walkway {
-            position: absolute;
-            transform-origin: left center;
-            background: white;
-            box-shadow: 0 0 0 2px rgba(210, 205, 196, 0.9);
-            opacity: 0.95;
-        }
-
-        .road {
-            height: 34px;
-            border-radius: 999px;
-        }
-
-        .walkway {
-            height: 12px;
-            border-radius: 999px;
-        }
-
-        .road.a { left: 4%; top: 43%; width: 52%; transform: rotate(-16deg); }
-        .road.b { left: 40%; top: 53%; width: 50%; transform: rotate(5deg); }
-        .road.c { left: 53%; top: 23%; width: 36%; transform: rotate(62deg); }
-        .walkway.a { left: 12%; top: 29%; width: 38%; transform: rotate(15deg); }
-        .walkway.b { left: 24%; top: 72%; width: 45%; transform: rotate(-18deg); }
-        .walkway.c { left: 62%; top: 62%; width: 26%; transform: rotate(30deg); }
-        .walkway.d { left: 70%; top: 34%; width: 20%; transform: rotate(-12deg); }
-
-        .green-space {
-            position: absolute;
-            background: var(--grass);
-            opacity: 0.9;
-            clip-path: polygon(10% 8%, 88% 0, 100% 58%, 64% 100%, 0 80%);
-        }
-
-        .green-space.one { left: 64%; top: 6%; width: 18%; height: 22%; }
-        .green-space.two { left: 75%; top: 70%; width: 16%; height: 18%; }
-
-        .building-shape {
-            position: absolute;
-            display: block;
-            background: rgba(211, 205, 194, 0.94);
-            border: 2px solid rgba(110, 101, 90, 0.35);
-            color: var(--ink);
-            text-decoration: none;
-            box-shadow: 0 10px 28px rgba(67, 55, 44, 0.16);
-        }
-
-        .building-shape:hover,
-        .building-shape.active {
-            border-color: #35a852;
-            box-shadow: inset 0 0 0 4px rgba(53, 168, 82, 0.38), 0 12px 30px rgba(67, 55, 44, 0.2);
-        }
-
-        .building-label {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            font-weight: 800;
-            font-size: clamp(16px, 1.8vw, 28px);
-            line-height: 1.08;
-            text-shadow: 0 2px 0 white, 0 -2px 0 white, 2px 0 0 white, -2px 0 0 white;
-            width: 92%;
-        }
-
-        .b62 {
-            left: 8%;
-            top: 20%;
-            width: 49%;
-            height: 27%;
-            transform: rotate(18deg);
-            clip-path: polygon(0 18%, 100% 0, 96% 54%, 43% 68%, 36% 100%, 15% 96%, 22% 68%, 3% 66%);
-        }
-
-        .b63 {
-            left: 18%;
-            top: 54%;
-            width: 35%;
-            height: 24%;
-            transform: rotate(17deg);
-            clip-path: polygon(0 10%, 92% 0, 100% 72%, 28% 100%, 20% 66%, 6% 64%);
-        }
-
-        .b69 {
-            left: 60%;
-            top: 33%;
-            width: 31%;
-            height: 32%;
-            transform: rotate(17deg);
-            clip-path: polygon(14% 0, 88% 4%, 100% 42%, 90% 100%, 18% 88%, 0 40%);
-        }
-
-        .poi-label {
-            position: absolute;
-            padding: 5px 8px;
-            border-radius: 7px;
-            background: rgba(255, 255, 255, 0.78);
-            font-size: 13px;
-            font-weight: 800;
-            color: #4f4840;
-            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.12);
-        }
-
-        .poi-label.bike { left: 26%; top: 14%; }
-        .poi-label.food { left: 11%; top: 36%; }
-        .poi-label.toilet { right: 6%; top: 61%; }
-
-        .map-search {
-            position: absolute;
-            left: 22px;
-            top: 18px;
-            width: min(410px, calc(100% - 44px));
-            background: white;
-            border-radius: 14px;
-            padding: 12px;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
-            z-index: 9;
-        }
-
-        .map-search .search-row {
-            margin: 0;
-        }
-
-        .focus-note {
-            position: absolute;
-            left: 22px;
-            bottom: 18px;
-            width: min(430px, calc(100% - 44px));
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 14px;
-            padding: 14px;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
-            z-index: 9;
-            line-height: 1.4;
-            color: var(--muted);
-        }
-
-        .focus-note strong {
-            color: var(--ink);
-        }
-
-        /* screen-reader-only helper */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        /* ── map toolbar dropdowns ── */
-        .map-select {
-            appearance: none;
-            -webkit-appearance: none;
-            background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2351247A'/%3E%3C/svg%3E") no-repeat right 10px center;
-            color: var(--uq-purple);
-            border-radius: 12px;
-            padding: 11px 30px 11px 14px;
-            font-weight: 800;
-            font-size: 14px;
-            font-family: inherit;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.16);
-            border: none;
-            cursor: pointer;
-            min-width: 110px;
-        }
-
-        .map-select:focus {
-            outline: 2px solid var(--uq-purple);
-            outline-offset: 2px;
-        }
-
-        /* ── combined floor plan view — overlays the campus SVG map ── */
-        .combined-floor-view {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            /* transparent so the campus SVG shows through the gaps */
-            background: transparent;
-            padding: 70px 20px 20px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            z-index: 2;   /* above map-canvas (z-index: 1) */
-        }
-
-        .combined-floor-heading {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 14px;
-            margin-bottom: 10px;
-            flex-shrink: 0;
-            gap: 10px;
-            /* frosted pill above the panel */
-            background: rgba(255, 255, 255, 0.82);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
-        }
-
-        .combined-floor-title {
-            font-size: 16px;
-            font-weight: 800;
-            color: var(--ink);
-        }
-
-        .combined-floor-meta {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .combined-campus-badge {
-            background: var(--uq-purple);
-            color: white;
-            border-radius: 999px;
-            padding: 4px 12px;
-            font-size: 12px;
-            font-weight: 800;
-            white-space: nowrap;
-        }
-
-        .combined-count-badge {
-            background: white;
-            color: var(--muted);
-            border: 1px solid #e0d9d1;
-            border-radius: 999px;
-            padding: 4px 12px;
-            font-size: 12px;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        /* wrapper card that holds all buildings on this floor */
-        .combined-buildings-panel {
-            /* slightly translucent so campus map edges show through */
-            background: rgba(255, 255, 255, 0.94);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-radius: 16px;
-            box-shadow: 0 6px 32px rgba(0, 0, 0, 0.18);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            min-height: 0;
-        }
-
-        .combined-buildings-row {
-            display: flex;
-            align-items: stretch;
-            flex: 1;
-            min-height: 0;
-            overflow-y: auto;
-        }
-
-        /* one column per building */
-        .building-fp-col {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            border-right: 1.5px solid #ece6df;
-        }
-
-        .building-fp-col:last-child {
-            border-right: none;
-        }
-
-        .building-fp-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 14px 10px;
-            border-bottom: 1.5px solid #ece6df;
-            background: #faf8f5;
-            flex-shrink: 0;
-        }
-
-        .building-fp-name {
-            font-weight: 800;
-            font-size: 13px;
-            color: var(--ink);
-            line-height: 1.25;
-        }
-
-        .building-fp-num {
-            display: inline-block;
-            background: var(--uq-purple-soft);
-            color: var(--uq-purple);
-            border-radius: 999px;
-            padding: 2px 9px;
-            font-size: 11px;
-            font-weight: 800;
-        }
-
-        /* the clickable floor-plan area */
-        .building-fp-link {
-            flex: 1;
-            display: block;
-            padding: 12px;
-            text-decoration: none;
-            color: inherit;
-            transition: background 0.12s;
-        }
-
-        .building-fp-link:hover {
-            background: #fbf7ff;
-        }
-
-        .floor-plan-map {
-            position: relative;
-            width: 100%;
-            height: 200px;
-            background: #fbfaf7;
-            border: 1.5px solid #d4cdc4;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .floor-plan-map.real-layout {
-            height: auto;
-            aspect-ratio: var(--fp-aspect, 2.42 / 1);
-            background: white;
-            border-color: #b9b9b9;
-        }
-
-        .floor-plan-map .fp-inner {
-            position: absolute;
-            inset: 0;
-        }
-
-        .floor-plan-map .fp-svg {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* ── UQ-Maps-style floor plan SVG colours ── */
-        .fp-shell    { fill: #ffffff; stroke: #2c2c2c; stroke-width: 0.45; }
-        .fp-corridor { fill: rgba(212, 205, 196, 0.55); stroke: #b0a898; stroke-width: 0.22; }
-        .fp-wall     { stroke: #2c2c2c; stroke-width: 0.38; stroke-linecap: round; }
-
-        /* real-layout (buildings with accurate outlines) keep crisp black lines */
-        .floor-plan-map.real-layout .fp-shell    { fill: #ffffff; stroke: #1a1a1a; stroke-width: 0.28; }
-        .floor-plan-map.real-layout .fp-corridor { fill: rgba(198, 192, 184, 0.5); stroke: #9a9088; stroke-width: 0.14; }
-        .floor-plan-map.real-layout .fp-wall     { stroke: #1a1a1a; stroke-width: 0.22; }
-
-        /* ── room base style ── */
-        .fp-room {
-            position: absolute;
-            left: var(--rx);
-            top: var(--ry);
-            width: var(--rw);
-            height: var(--rh);
-            border: 0.55px solid #787060;
-            background: rgba(246, 243, 238, 0.92);
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            z-index: 2;
-            text-align: center;
-            padding: 1px;
-        }
-
-        /* Real-layout rooms: dark border only — NO background override so type colours
-           (which follow below) can apply freely on all floors including buildings 62 & 63 */
-        .floor-plan-map.real-layout .fp-room {
-            border-color: #1a1a1a;
-        }
-
-        /* ══════════════════════════════════════════════════════════════════
-           ROOM TYPE COLOUR CODING
-           All selectors start with ".floor-plan-map" so specificity = 0-3-0,
-           matching (and therefore overriding on cascade order) the real-layout
-           base rule above. This makes colours work on EVERY floor of every building.
-           ══════════════════════════════════════════════════════════════════ */
-
-        /* Teaching / lecture / general teaching room → sage green */
-        .floor-plan-map .fp-room[data-rtype*="teaching"],
-        .floor-plan-map .fp-room[data-rtype*="lecture"],
-        .floor-plan-map .fp-room[data-rtype*="theatre"] {
-            background: rgba(186, 230, 184, 0.97);
-            border-color: rgba(56, 142, 60, 0.7);
-        }
-
-        /* Computer lab (teaching or open access) → sky blue */
-        .floor-plan-map .fp-room[data-rtype*="computer"],
-        .floor-plan-map .fp-room[data-rtype*=" lab"],
-        .floor-plan-map .fp-room[data-rtype="lab"] {
-            background: rgba(179, 216, 252, 0.97);
-            border-color: rgba(30, 120, 200, 0.65);
-        }
-
-        /* Office → warm amber-yellow */
-        .floor-plan-map .fp-room[data-rtype*="office"] {
-            background: rgba(255, 244, 140, 0.97);
-            border-color: rgba(180, 140, 10, 0.6);
-        }
-
-        /* Meeting room → periwinkle */
-        .floor-plan-map .fp-room[data-rtype*="meeting"] {
-            background: rgba(200, 210, 255, 0.97);
-            border-color: rgba(80, 100, 200, 0.6);
-        }
-
-        /* Study / common study spots → soft lavender */
-        .floor-plan-map .fp-room[data-rtype*="study"] {
-            background: rgba(220, 200, 242, 0.97);
-            border-color: rgba(110, 70, 160, 0.55);
-        }
-
-        /* Stairs → deep green */
-        .floor-plan-map .fp-room[data-rtype*="stair"] {
-            background: rgba(120, 188, 118, 0.97);
-            border-color: rgba(34, 110, 34, 0.72);
-        }
-
-        /* Lift / elevator → teal-green */
-        .floor-plan-map .fp-room[data-rtype*="lift"],
-        .floor-plan-map .fp-room[data-rtype*="elevator"] {
-            background: rgba(100, 195, 175, 0.97);
-            border-color: rgba(20, 130, 110, 0.7);
-        }
-
-        /* Toilet / WC / accessible → cool slate */
-        .floor-plan-map .fp-room[data-rtype*="toilet"],
-        .floor-plan-map .fp-room[data-rtype*="bathroom"],
-        .floor-plan-map .fp-room[data-rtype*="wc"],
-        .floor-plan-map .fp-room[data-rtype*="accessible"] {
-            background: rgba(200, 215, 222, 0.97);
-            border-color: rgba(80, 108, 120, 0.6);
-        }
-
-        /* Kitchenette / food & beverage → warm peach */
-        .floor-plan-map .fp-room[data-rtype*="kitchen"],
-        .floor-plan-map .fp-room[data-rtype*="food"],
-        .floor-plan-map .fp-room[data-rtype*="beverage"] {
-            background: rgba(255, 210, 155, 0.97);
-            border-color: rgba(200, 120, 20, 0.6);
-        }
-
-        /* Corridor (room-type label) → warm grey */
-        .floor-plan-map .fp-room[data-rtype*="corridor"] {
-            background: rgba(210, 202, 193, 0.85);
-            border-color: rgba(130, 120, 110, 0.5);
-        }
-
-        /* Storage / bicycle storage → tan */
-        .floor-plan-map .fp-room[data-rtype*="storage"],
-        .floor-plan-map .fp-room[data-rtype*="bicycle"] {
-            background: rgba(220, 210, 190, 0.97);
-            border-color: rgba(140, 120, 80, 0.55);
-        }
-
-        /* Defibrillator / hand sanitiser / first aid → soft red */
-        .floor-plan-map .fp-room[data-rtype*="defibrillator"],
-        .floor-plan-map .fp-room[data-rtype*="sanitiser"],
-        .floor-plan-map .fp-room[data-rtype*="first aid"] {
-            background: rgba(255, 195, 195, 0.97);
-            border-color: rgba(200, 60, 60, 0.6);
-        }
-
-        /* "open full map" hint shown on hover */
-        .building-fp-hint {
-            font-size: 11px;
-            color: var(--uq-purple);
-            font-weight: 700;
-            margin-top: 8px;
-            text-align: right;
-            opacity: 0;
-            transition: opacity 0.12s;
-        }
-
-        .building-fp-link:hover .building-fp-hint { opacity: 1; }
-
-        .fp-room-code { font-size: 5.5px; font-weight: 800; display: block; line-height: 1.1; }
-        .fp-room-name { font-size: 4px; display: block; opacity: 0.7; line-height: 1.1; }
-
-        /* ── room type legend ── */
-        .fp-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px 16px;
-            padding: 9px 14px;
-            border-top: 1.5px solid #ece6df;
-            background: #faf8f5;
-            flex-shrink: 0;
-        }
-
-        .fp-legend-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            color: var(--muted);
-            font-weight: 600;
-        }
-
-        .fp-legend-swatch {
-            width: 11px;
-            height: 11px;
-            border-radius: 2px;
-            border: 1px solid rgba(0, 0, 0, 0.18);
-            flex-shrink: 0;
-        }
-
-        /* ═══════════════════════════════════════════
-           SVG-EMBEDDED FLOOR PLAN STYLES
-           Rooms rendered directly inside the campus SVG
-           so they sit exactly on the building footprints.
-        ═══════════════════════════════════════════ */
-        .svg-fp-shell    { fill: #ffffff; stroke: #1a1a1a; stroke-width: 0.4; }
-        .svg-fp-corridor { fill: rgba(212,205,196,0.55); stroke: none; }
-        .svg-fp-wall     { stroke: #1a1a1a; stroke-width: 0.25; stroke-linecap: round; }
-
-        /* base room — default colour when type doesn't match any class */
-        .svg-room { fill: rgba(246,243,238,0.92); stroke: rgba(120,112,96,0.7); stroke-width: 0.3; }
-
-        /* room type colours — same palette as the HTML floor plans */
-        .svg-room.svgr-teaching { fill: rgba(186,230,184,0.97); stroke: rgba(56,142,60,0.7);   }
-        .svg-room.svgr-lab      { fill: rgba(179,216,252,0.97); stroke: rgba(30,120,200,0.65); }
-        .svg-room.svgr-office   { fill: rgba(255,244,140,0.97); stroke: rgba(180,140,10,0.6);  }
-        .svg-room.svgr-meeting  { fill: rgba(200,210,255,0.97); stroke: rgba(80,100,200,0.6);  }
-        .svg-room.svgr-study    { fill: rgba(220,200,242,0.97); stroke: rgba(110,70,160,0.55); }
-        .svg-room.svgr-stairs   { fill: rgba(120,188,118,0.97); stroke: rgba(34,110,34,0.72);  }
-        .svg-room.svgr-lift     { fill: rgba(100,195,175,0.97); stroke: rgba(20,130,110,0.7);  }
-        .svg-room.svgr-toilet   { fill: rgba(200,215,222,0.97); stroke: rgba(80,108,120,0.6);  }
-        .svg-room.svgr-kitchen  { fill: rgba(255,210,155,0.97); stroke: rgba(200,120,20,0.6);  }
-        .svg-room.svgr-corridor { fill: rgba(210,202,193,0.85); stroke: rgba(130,120,110,0.5); }
-        .svg-room.svgr-storage  { fill: rgba(220,210,190,0.97); stroke: rgba(140,120,80,0.55); }
-
-        /* ── compact floor-plan legend (HTML overlay, bottom-right) ── */
-        .map-fp-legend {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            z-index: 5;
-            background: rgba(255,255,255,0.94);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-radius: 14px;
-            padding: 11px 13px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            min-width: 168px;
-        }
-        .map-fp-legend-title {
-            font-size: 11.5px;
-            font-weight: 800;
-            color: var(--uq-purple);
-            margin-bottom: 7px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #ece6df;
-        }
-        .map-fp-legend-body {
-            display: flex;
-            flex-direction: column;
-            gap: 3.5px;
-            margin-bottom: 7px;
-        }
-        .map-fp-legend-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 10.5px;
-            color: var(--muted);
-            font-weight: 600;
-        }
-        .map-fp-legend-swatch {
-            width: 10px;
-            height: 10px;
-            border-radius: 2px;
-            border: 1px solid rgba(0,0,0,0.15);
-            flex-shrink: 0;
-        }
-        .map-fp-legend-links {
-            border-top: 1px solid #ece6df;
-            padding-top: 6px;
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-        }
-        .map-fp-legend-links a {
-            font-size: 11px;
-            color: var(--uq-purple);
-            font-weight: 700;
-            text-decoration: none;
-        }
-        .map-fp-legend-links a:hover { text-decoration: underline; }
-
-        .floor-plan-none {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--muted);
-            font-size: 15px;
-            text-align: center;
-            padding: 40px;
-        }
-
-        /* keep old class working (used only as fallback empty state inside combined panel) */
-        .combined-empty {
-            width: 100%;
-            padding: 50px 24px;
-            text-align: center;
-            color: var(--muted);
-            font-size: 15px;
-        }
-
-        /* ── inline candidate dropdowns ── */
-        .field-wrap {
-            position: relative;
-        }
-
-        .candidates-drop {
-            border: 1px solid #ddd8d1;
-            border-radius: 12px;
-            background: white;
-            max-height: 220px;
-            overflow-y: auto;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-            margin-top: 6px;
-            z-index: 50;
-        }
-
-        .cand-btn {
-            display: block;
-            width: 100%;
-            text-align: left;
-            border: none;
-            border-bottom: 1px solid #eee9e3;
-            background: none;
-            padding: 10px 13px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 14px;
-            color: var(--ink);
-        }
-
-        .cand-btn:last-child {
-            border-bottom: none;
-        }
-
-        .cand-btn:hover {
-            background: var(--uq-purple-soft);
-        }
-
-        .cand-meta {
-            color: var(--muted);
-            font-size: 12px;
-            margin-top: 2px;
-        }
-
-        .input-row.confirmed-row {
-            border-color: var(--uq-purple);
-            background: var(--uq-purple-soft);
-        }
-
-        .input-row.confirmed-row input {
-            color: var(--uq-purple);
-            font-weight: 700;
-        }
-
-        .selection-meta {
-            color: var(--muted);
-            font-size: 12px;
-            padding: 4px 12px 2px;
-        }
-
-        @media (max-width: 920px) {
-            .app {
-                grid-template-rows: auto auto;
-            }
-
-            .topbar {
-                padding: 16px;
-                gap: 12px;
-                align-items: flex-start;
-                flex-direction: column;
-            }
-
-            .main {
-                display: flex;
-                flex-direction: column;
-                position: relative;
-            }
-
-            .sidebar {
-                order: 2;
-                border-right: none;
-                box-shadow: none;
-                width: 100%;
-                transition: max-height 0.28s ease, padding 0.28s ease;
-                max-height: 2000px;
-                overflow: hidden;
-            }
-
-            /* on mobile, collapsed sidebar hides below the map */
-            .main.sidebar-collapsed .sidebar {
-                max-height: 0;
-                padding: 0;
-            }
-
-            .map-wrap {
-                order: 1;
-                height: 520px;
-            }
-
-            .map-toolbar {
-                top: auto;
-                bottom: 92px;
-                right: 16px;
-            }
-
-            /* on mobile: fixed pill at centre-left edge of screen */
-            .sidebar-toggle {
-                position: fixed;
-                top: 50vh;
-                left: 0 !important;
-                right: auto;
-                bottom: auto;
-                transform: translateY(-50%);
-                width: 28px;
-                height: 56px;
-                border-radius: 0 12px 12px 0;
-                box-shadow: 3px 0 14px rgba(81, 36, 122, 0.35);
-            }
-
-            .sidebar-toggle.is-collapsed .toggle-arrow {
-                transform: rotate(180deg);
-            }
-
-            /* stack buildings vertically on narrow screens */
-            .combined-buildings-row {
-                flex-direction: column;
-            }
-
-            .building-fp-col {
-                border-right: none;
-                border-bottom: 1.5px solid #ece6df;
-            }
-
-            .building-fp-col:last-child {
-                border-bottom: none;
-            }
-
-            .combined-floor-heading {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-        }
-
-    </style>
+    <link rel="stylesheet" href="https://api.mazemap.com/js/v2.2.6/mazemap.min.css">
+    <script src="https://api.mazemap.com/js/v2.2.6/mazemap.min.js"></script>
+    {% include "maps/partials/home_styles.html" %}
 </head>
 <body>
 <div class="app">
     <header class="topbar">
         <div class="brand">
-            <div class="brand-mark">UQ</div>
-            <div>Indoor Maps</div>
+            <img class="topbar-uq-logo" src="{% static 'uq.png' %}" alt="UQ Indoor Maps">
         </div>
+        <button class="timetable-topbar-btn" id="timetable-topbar-btn" type="button"
+                aria-label="View today's timetable" aria-expanded="false" aria-controls="tt-panel">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
+            Timetable
+        </button>
     </header>
 
-    <main class="main" id="main-layout">
+    <main class="main{% if path %} route-active{% endif %}" id="main-layout">
 
-        {# ── sidebar collapse/expand toggle ── #}
-        <button class="sidebar-toggle" id="sidebar-toggle"
-                aria-label="Toggle sidebar" title="Toggle sidebar">
-            <span class="toggle-arrow">&#8249;</span>
-        </button>
+        <!-- ══ FLOATING OVERLAY PANEL (always present, content changes by state) ══ -->
+        <aside class="map-overlay-panel" id="map-search-panel" aria-label="Destination search">
 
-        <aside class="sidebar" id="sidebar">
-            <section class="panel">
-                <div class="panel-title">Plan a route</div>
-                <p class="hint">Search any rooms, stairs, lifts, or buildings.</p>
-                <form method="get" class="route-form" id="route-form">
+            {# ── UPCOMING CLASS STRIP (JS-populated from localStorage, hidden when route active) ── #}
+            {% if not to_node and not path %}
+            <section class="upcoming-bar" id="upcoming-bar" aria-label="Upcoming class"
+                     style="display:none">
+                {# content injected by JS #}
+            </section>
+            {% endif %}
+
+            {# ── PANEL A: Destination search ── #}
+            <section class="floating-search-panel" id="dest-search-panel"
+                     {% if to_node or path %}style="display:none"{% endif %}>
+                <form method="get" class="map-search-form" id="dest-search-form">
+                    <span class="search-leading-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M12 21s7-6.2 7-12A7 7 0 0 0 5 9c0 5.8 7 12 7 12Z"/>
+                            <circle cx="12" cy="9" r="2.4"/>
+                        </svg>
+                    </span>
+                    <label for="dest-search-input" class="sr-only">Search destination</label>
+                    <input id="dest-search-input" type="text" name="to"
+                           placeholder="Where to?"
+                           value="{{ to_q }}"
+                           autocomplete="off">
+                    <button type="submit" class="icon-btn search-submit" aria-label="Search" title="Search">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <circle cx="11" cy="11" r="6.5"/>
+                            <path d="M16 16l5 5"/>
+                        </svg>
+                    </button>
+                </form>
+
+                {# Disambiguation: multiple destinations match the query #}
+                {% if to_candidates %}
+                <div class="candidates-panel" id="dest-candidates-panel">
+                    <div class="candidates-title">Choose destination</div>
+                    {% for c in to_candidates %}
+                    {% if c.kind == "node" %}
+                    <form method="get" style="margin:0">
+                        <input type="hidden" name="to_id" value="{{ c.id }}">
+                        <button type="submit" class="cand-btn">
+                            <strong>{{ c.label }}</strong>
+                            <div class="cand-meta">{{ c.building }} · Floor {{ c.floor }}</div>
+                        </button>
+                    </form>
+                    {% else %}
+                    <a class="cand-btn"
+                       href="{% url 'building_detail' c.building_id %}?floor={{ c.floor }}&room={{ c.room_code }}">
+                        <strong>{{ c.label }}</strong>
+                        <div class="cand-meta">{{ c.building }} · {{ c.floor_label }} · floorplan only</div>
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </section>
+
+            {# ── PANEL B: Destination confirmed – show from-input + Get Directions ── #}
+            {% if to_node and not path %}
+            <section class="floating-dest-panel" id="dest-confirmed-panel">
+                <form method="get" class="from-form" id="from-form">
+                    <input type="hidden" name="to_id" value="{{ to_id }}">
                     <input type="hidden" name="from_id" id="from-id-input" value="{{ from_id }}">
-                    <input type="hidden" name="to_id" id="to-id-input" value="{{ to_id }}">
-                    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
 
-                    <div class="field-wrap">
-                        <label class="input-row{% if from_node %} confirmed-row{% endif %}" id="from-row" aria-label="Starting location">
+                    {# From field – always visible at the top #}
+                    <div class="field-wrap" id="from-field-wrap">
+                        <label class="input-row{% if from_node %} confirmed-row{% endif %}" id="from-row"
+                               aria-label="Starting location">
                             <span class="dot"></span>
                             <input type="text" name="from" id="from-input"
-                                   placeholder="From, e.g. 101 or Building 62"
+                                   placeholder="Starting point"
                                    value="{% if from_node %}{{ from_node.label }}{% else %}{{ from_q }}{% endif %}"
                                    autocomplete="off">
                         </label>
                         {% if from_node %}
-                            <div class="selection-meta">{{ from_node.building }} · Floor {{ from_node.floor }}</div>
+                        <div class="selection-meta">{{ from_node.building }} · Floor {{ from_node.floor }}</div>
                         {% endif %}
                         {% if from_candidates %}
                         <div class="candidates-drop" id="from-drop">
@@ -1436,141 +133,94 @@
                         {% endif %}
                     </div>
 
-                    <div class="field-wrap">
-                        <label class="input-row{% if to_node %} confirmed-row{% endif %}" id="to-row" aria-label="Destination">
-                            <span class="dot to"></span>
-                            <input type="text" name="to" id="to-input"
-                                   placeholder="To, e.g. 212 or stairs"
-                                   value="{% if to_node %}{{ to_node.label }}{% else %}{{ to_q }}{% endif %}"
-                                   autocomplete="off">
-                        </label>
-                        {% if to_node %}
-                            <div class="selection-meta">{{ to_node.building }} · Floor {{ to_node.floor }}</div>
-                        {% endif %}
-                        {% if to_candidates %}
-                        <div class="candidates-drop" id="to-drop">
-                            {% for c in to_candidates %}
-                            {% if c.kind == "node" %}
-                            <button type="button" class="cand-btn"
-                                    data-id="{{ c.id }}"
-                                    data-label="{{ c.label }}"
-                                    data-field="to">
-                                <strong>{{ c.label }}</strong>
-                                <div class="cand-meta">{{ c.building }} · Floor {{ c.floor }}</div>
-                            </button>
-                            {% else %}
-                            <button type="button" class="cand-btn"
-                                    data-id=""
-                                    data-label="{{ c.label }}"
-                                    data-field="to"
-                                    data-href="{% url 'building_detail' c.building_id %}?floor={{ c.floor }}&room={{ c.room_code }}">
-                                <strong>{{ c.label }}</strong>
-                                <div class="cand-meta">{{ c.building }} · {{ c.floor_label }} · floorplan only</div>
-                            </button>
-                            {% endif %}
-                            {% endfor %}
+                    {# Destination info – below the from-field #}
+                    <div class="dest-to-row" id="dest-to-row">
+                        <svg class="pin-to dest-pin" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M12 1C7.03 1 3 5.03 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-4.97-4.03-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" fill="#ef4444"/>
+                        </svg>
+                        <div class="dest-info">
+                            <div class="dest-name">{{ to_node.label }}</div>
+                            <div class="dest-meta">{{ to_node.building }} · Floor {{ to_node.floor }}</div>
                         </div>
-                        {% endif %}
+                        <button type="button" class="back-icon-btn" id="change-dest-btn"
+                                aria-label="Change destination" title="Change destination">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
                     </div>
 
-                    <button type="submit" class="btn">Get directions</button>
+                    {# Hidden row — revealed when user clicks ✕ to change destination #}
+                    <div class="to-change-row" id="to-change-row" style="display:none">
+                        <label class="input-row to-change-input-row" id="to-change-input-row">
+                            <svg class="pin-to" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg"
+                                 aria-hidden="true" style="width:14px;height:18px;flex-shrink:0;justify-self:center;">
+                                <path d="M12 1C7.03 1 3 5.03 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-4.97-4.03-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" fill="#ef4444"/>
+                            </svg>
+                            <input type="text" name="to" id="to-change-input"
+                                   placeholder="Search for a destination" autocomplete="off">
+                        </label>
+                    </div>
 
                     {% if route_error %}
-                        <div class="error">{{ route_error }}</div>
+                    <div class="error">{{ route_error }}</div>
                     {% endif %}
+
+                    {# Submit button — carries get_directions flag so the server knows to compute the route #}
+                    <div class="dest-submit" id="dest-submit-wrap">
+                        <button type="submit" name="get_directions" value="1" class="btn">Get Directions</button>
+                    </div>
                 </form>
             </section>
-
-            {% if path %}
-            {% with path|last as last_node %}
-            <section class="panel">
-                {% if simplified_segments %}
-                    <div class="route-summary">{{ simplified_segments|length }} step{{ simplified_segments|length|pluralize }} · {{ path.0.label }} → {{ last_node.label }}</div>
-                    <div class="simplified-directions">
-                        {% for segment in simplified_segments %}
-                        <div class="direction-step">
-                            <div class="step-num">{{ forloop.counter }}</div>
-                            <div class="step-content">
-                                <div class="step-description">{{ segment.description }}</div>
-                                {% if segment.turn_direction or segment.intermediate_nodes %}
-                                <div class="step-meta">
-                                    {% if segment.turn_direction %}<span class="tag">{{ segment.turn_direction }}</span>{% endif %}
-                                    {% if segment.intermediate_nodes|length > 0 %}<span class="secondary">via {{ segment.intermediate_nodes|length }} location{{ segment.intermediate_nodes|length|pluralize }}</span>{% endif %}
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="route-summary">{{ path|length|add:"-1" }} step{{ path|length|add:"-1"|pluralize }} · {{ path.0.label }} → {{ last_node.label }}</div>
-                    {% for node in path %}
-                    <div class="step">
-                        <div class="step-num">{{ forloop.counter }}</div>
-                        <div>
-                            <div>{{ node.label }}<span class="tag">{{ node.type }}</span></div>
-                            <div class="step-meta">{{ node.building }} · Floor {{ node.floor }}</div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% endif %}
-            </section>
-            {% endwith %}
             {% endif %}
 
-            <section class="panel">
-                <div class="panel-title">Buildings</div>
-                <p class="hint">The overview is focused on the buildings loaded by the project data folder.</p>
-
-                <form method="get" class="search-row">
-                    {% if from_q %}<input type="hidden" name="from" value="{{ from_q }}">{% endif %}
-                    {% if to_q %}<input type="hidden" name="to" value="{{ to_q }}">{% endif %}
-                    {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
-                    {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
-                    <input type="text" name="q" placeholder="Search buildings or rooms" value="{{ query }}">
-                    <button type="submit" class="mini-btn">Search</button>
-                </form>
-            </section>
-
-            {% for result in results %}
-                <a class="building-card building-link" href="{% url 'building_detail' result.building.id %}">
-                    <div class="building-title">{{ result.building.name }} (Building {{ result.building.number }})</div>
-                    <div class="building-meta">{{ result.building.campus }} · {{ result.building.floors|length }} floor plan(s)</div>
-                    <p class="building-description">{{ result.building.description }}</p>
-                </a>
-                {% if result.matching_rooms %}
-                    <div class="room-matches">
-                        {% for room in result.matching_rooms %}
-                            <a class="room-chip" href="{% url 'building_detail' result.building.id %}?floor={{ room.floor_level }}&room={{ room.code }}">
-                                {{ room.code }} · {{ room.floor_label }}
-                            </a>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% empty %}
-                <section class="panel empty">No buildings or rooms found. Try 62, 63, 69, 101, 225, or 148.</section>
-            {% endfor %}
         </aside>
 
+        {# ── IN-FLOW ROUTE BAR: full-width strip above maps, only when route is active ── #}
+        {% if path %}
+        {% with path|last as last_node %}
+        <div class="route-card-bar">
+            <a href="?to={{ to_q }}&to_id={{ to_id }}&from={{ from_q }}&from_id={{ from_id }}"
+               class="route-back-btn" aria-label="Go back">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 12H5M12 5l-7 7 7 7"/>
+                </svg>
+            </a>
+            <div class="route-bar-endpoints">
+                <div class="endpoint-row">
+                    <span class="dot"></span>
+                    <span class="endpoint-label">{{ from_node.label }}</span>
+                </div>
+                <div class="route-ep-divider" aria-hidden="true"></div>
+                <div class="endpoint-row endpoint-to">
+                    <svg class="pin-to" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M12 1C7.03 1 3 5.03 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-4.97-4.03-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" fill="#ef4444"/>
+                    </svg>
+                    <span class="endpoint-label">{{ last_node.label }}</span>
+                </div>
+            </div>
+            {% if walking_minutes %}
+            <div class="route-time-badge">~{{ walking_minutes }} min walk</div>
+            {% endif %}
+        </div>
+        {% endwith %}
+        {% endif %}
+
+        {# ══ MAP AREA: campus map always shown; JS marks start/dest when a route is active ══ #}
         <section class="map-wrap">
 
-            {# ── toolbar: campus + floor dropdowns ── #}
             <div class="map-toolbar">
                 <form id="map-ctrl-form" method="get" style="display:flex; gap:10px;">
-                    {# preserve route params so changing floor doesn't clear the route #}
-                    {% if from_q %}<input type="hidden" name="from" value="{{ from_q }}">{% endif %}
                     {% if to_q %}<input type="hidden" name="to" value="{{ to_q }}">{% endif %}
-                    {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
                     {% if to_id %}<input type="hidden" name="to_id" value="{{ to_id }}">{% endif %}
-                    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+                    {% if from_q %}<input type="hidden" name="from" value="{{ from_q }}">{% endif %}
+                    {% if from_id %}<input type="hidden" name="from_id" value="{{ from_id }}">{% endif %}
+                    {% if path %}<input type="hidden" name="get_directions" value="1">{% endif %}
 
-                    <label for="campus-select" class="sr-only">Campus</label>
-                    <select id="campus-select" name="campus" class="map-select"
-                            onchange="document.getElementById('map-ctrl-form').submit()">
-                        {% for c in campus_options %}
-                        <option value="{{ c.value }}"{% if c.value == selected_campus %} selected{% endif %}>{{ c.label }}</option>
-                        {% endfor %}
-                    </select>
+                    <input type="hidden" name="campus" value="st-lucia">
+                    <span class="map-select" style="cursor:default;pointer-events:none;opacity:0.85;background-image:none;padding:11px 14px;text-align:center;display:inline-block;">St Lucia</span>
 
                     <label for="floor-select" class="sr-only">Floor</label>
                     <select id="floor-select" name="floor" class="map-select"
@@ -1582,212 +232,682 @@
                 </form>
             </div>
 
-            {# ══════════════════════════════════════════════════════
-                 CAMPUS MAP — floor plans embedded directly inside
-                 the SVG building groups so they align automatically
-                 with each building's position and rotation.
-            ══════════════════════════════════════════════════════ #}
-            <div class="map-canvas">
-                <svg class="campus-svg" viewBox="0 0 1366 880" preserveAspectRatio="xMidYMid slice"
-                     xmlns="http://www.w3.org/2000/svg">
-
-                    {# ── green spaces ── #}
-                    <ellipse cx="1100" cy="110" rx="130" ry="90" fill="#b6ddb0" opacity="0.85"/>
-                    <ellipse cx="1220" cy="760" rx="90"  ry="70" fill="#b6ddb0" opacity="0.80"/>
-                    <ellipse cx="60"   cy="820" rx="70"  ry="55" fill="#b6ddb0" opacity="0.75"/>
-                    <path d="M1300,0 Q1366,80 1366,200 Q1320,160 1260,120 Q1290,60 1300,0Z"
-                          fill="#a8d4a2" opacity="0.7"/>
-
-                    {# ── water ── #}
-                    <path d="M1200,820 Q1300,810 1366,840 L1366,880 L1180,880Z"
-                          fill="#b8dde8" opacity="0.85"/>
-
-                    {# ── roads ── #}
-                    <rect x="-20" y="440" width="700" height="38" rx="6"
-                          fill="white" stroke="#ccc8c0" stroke-width="1.5" opacity="0.92"
-                          transform="rotate(-14,340,459)"/>
-                    <rect x="530" y="500" width="870" height="38" rx="6"
-                          fill="white" stroke="#ccc8c0" stroke-width="1.5" opacity="0.92"
-                          transform="rotate(5,965,519)"/>
-                    <rect x="700" y="0"   width="36"  height="500" rx="6"
-                          fill="white" stroke="#ccc8c0" stroke-width="1.5" opacity="0.92"
-                          transform="rotate(60,718,250)"/>
-
-                    {# ── walkways ── #}
-                    <rect x="130" y="270"  width="460" height="13" rx="999"
-                          fill="white" stroke="#d8d4cc" stroke-width="1" opacity="0.9"
-                          transform="rotate(13,360,277)"/>
-                    <rect x="200" y="720"  width="520" height="13" rx="999"
-                          fill="white" stroke="#d8d4cc" stroke-width="1" opacity="0.9"
-                          transform="rotate(-16,460,727)"/>
-                    <rect x="730" y="650"  width="290" height="11" rx="999"
-                          fill="white" stroke="#d8d4cc" stroke-width="1" opacity="0.9"
-                          transform="rotate(28,875,656)"/>
-                    <rect x="840" y="310"  width="230" height="11" rx="999"
-                          fill="white" stroke="#d8d4cc" stroke-width="1" opacity="0.9"
-                          transform="rotate(-10,955,316)"/>
-
-                    {# ═══ BUILDING 62 — John Hines ═══
-                         Rect 560×260, rotated 16° around its centre.
-                         A nested svg maps 0–100 coords → 560×260 px,
-                         so room x/y/w/h percentages align automatically.
-                    ═══════════════════════════════════════════════ #}
-                    <g transform="translate(100,158) rotate(16,280,130)">
-                        {# always-visible shadow rect #}
-                        <rect x="0" y="0" width="560" height="260" rx="4"
-                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
-                              opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
-                        {% for item in map_floors %}{% if item.building.number == "62" %}
-                        {# floor plan embedded in a nested SVG with matching viewBox #}
-                        <svg id="fp-svg-b{{ item.building.number }}_f{{ item.floor.level }}"
-                             x="0" y="0" width="560" height="260"
-                             viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
-                            {% for c in item.floor.corridors %}
-                            <rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" class="svg-fp-corridor"/>
-                            {% endfor %}
-                            {% for room in item.floor.rooms %}{% with t=room.type|lower %}
-                            <rect x="{{ room.x }}" y="{{ room.y }}" width="{{ room.w }}" height="{{ room.h }}"
-                                  class="svg-room{% if 'teaching' in t or 'lecture' in t or 'theatre' in t %} svgr-teaching{% elif 'lab' in t or 'computer' in t %} svgr-lab{% elif 'office' in t %} svgr-office{% elif 'meeting' in t %} svgr-meeting{% elif 'study' in t %} svgr-study{% elif 'stair' in t %} svgr-stairs{% elif 'lift' in t or 'elevator' in t %} svgr-lift{% elif 'toilet' in t or 'wc' in t or 'accessible' in t or 'bathroom' in t %} svgr-toilet{% elif 'kitchen' in t or 'food' in t or 'beverage' in t %} svgr-kitchen{% elif 'corridor' in t %} svgr-corridor{% elif 'storage' in t or 'bicycle' in t %} svgr-storage{% endif %}"/>
-                            {% endwith %}{% endfor %}
-                            {% for wall in item.floor.walls %}
-                            <line x1="{{ wall.x1 }}" y1="{{ wall.y1 }}" x2="{{ wall.x2 }}" y2="{{ wall.y2 }}" class="svg-fp-wall"/>
-                            {% endfor %}
-                        </svg>
-                        {% endif %}{% endfor %}
-                        <text x="280" y="-8" text-anchor="middle" font-size="13" font-weight="800"
-                              fill="#2c2926" font-family="Arial,sans-serif"
-                              style="paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round">
-                            John Hines (62)
-                        </text>
-                    </g>
-
-                    {# ═══ BUILDING 63 — Physiology Lecture Theatres ═══
-                         Rect 420×270, rotated 14° around its centre.
-                    ═══════════════════════════════════════════════ #}
-                    <g transform="translate(72,476) rotate(14,210,135)">
-                        <rect x="0" y="0" width="420" height="270" rx="4"
-                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
-                              opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
-                        {% for item in map_floors %}{% if item.building.number == "63" %}
-                        <svg id="fp-svg-b{{ item.building.number }}_f{{ item.floor.level }}"
-                             x="0" y="0" width="420" height="270"
-                             viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
-                            {% for c in item.floor.corridors %}
-                            <rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" class="svg-fp-corridor"/>
-                            {% endfor %}
-                            {% for room in item.floor.rooms %}{% with t=room.type|lower %}
-                            <rect x="{{ room.x }}" y="{{ room.y }}" width="{{ room.w }}" height="{{ room.h }}"
-                                  class="svg-room{% if 'teaching' in t or 'lecture' in t or 'theatre' in t %} svgr-teaching{% elif 'lab' in t or 'computer' in t %} svgr-lab{% elif 'office' in t %} svgr-office{% elif 'meeting' in t %} svgr-meeting{% elif 'study' in t %} svgr-study{% elif 'stair' in t %} svgr-stairs{% elif 'lift' in t or 'elevator' in t %} svgr-lift{% elif 'toilet' in t or 'wc' in t or 'accessible' in t or 'bathroom' in t %} svgr-toilet{% elif 'kitchen' in t or 'food' in t or 'beverage' in t %} svgr-kitchen{% elif 'corridor' in t %} svgr-corridor{% elif 'storage' in t or 'bicycle' in t %} svgr-storage{% endif %}"/>
-                            {% endwith %}{% endfor %}
-                            {% for wall in item.floor.walls %}
-                            <line x1="{{ wall.x1 }}" y1="{{ wall.y1 }}" x2="{{ wall.x2 }}" y2="{{ wall.y2 }}" class="svg-fp-wall"/>
-                            {% endfor %}
-                        </svg>
-                        {% endif %}{% endfor %}
-                        <text x="210" y="-8" text-anchor="middle" font-size="12" font-weight="800"
-                              fill="#2c2926" font-family="Arial,sans-serif"
-                              style="paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round">
-                            Physiology LT (63)
-                        </text>
-                    </g>
-
-                    {# ═══ BUILDING 69 ═══
-                         Rect 370×380, rotated 14° around its centre.
-                    ═══════════════════════════════════════════════ #}
-                    <g transform="translate(730,260) rotate(14,185,190)">
-                        <rect x="0" y="0" width="370" height="380" rx="4"
-                              fill="#ede8df" stroke="#2c2c2c" stroke-width="1.2"
-                              opacity="{% if map_floors %}0.12{% else %}0.45{% endif %}"/>
-                        {% for item in map_floors %}{% if item.building.number == "69" %}
-                        <svg id="fp-svg-b{{ item.building.number }}_f{{ item.floor.level }}"
-                             x="0" y="0" width="370" height="380"
-                             viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <polygon points="{{ item.floor.outline_points }}" class="svg-fp-shell"/>
-                            {% for c in item.floor.corridors %}
-                            <rect x="{{ c.x }}" y="{{ c.y }}" width="{{ c.w }}" height="{{ c.h }}" class="svg-fp-corridor"/>
-                            {% endfor %}
-                            {% for room in item.floor.rooms %}{% with t=room.type|lower %}
-                            <rect x="{{ room.x }}" y="{{ room.y }}" width="{{ room.w }}" height="{{ room.h }}"
-                                  class="svg-room{% if 'teaching' in t or 'lecture' in t or 'theatre' in t %} svgr-teaching{% elif 'lab' in t or 'computer' in t %} svgr-lab{% elif 'office' in t %} svgr-office{% elif 'meeting' in t %} svgr-meeting{% elif 'study' in t %} svgr-study{% elif 'stair' in t %} svgr-stairs{% elif 'lift' in t or 'elevator' in t %} svgr-lift{% elif 'toilet' in t or 'wc' in t or 'accessible' in t or 'bathroom' in t %} svgr-toilet{% elif 'kitchen' in t or 'food' in t or 'beverage' in t %} svgr-kitchen{% elif 'corridor' in t %} svgr-corridor{% elif 'storage' in t or 'bicycle' in t %} svgr-storage{% endif %}"/>
-                            {% endwith %}{% endfor %}
-                            {% for wall in item.floor.walls %}
-                            <line x1="{{ wall.x1 }}" y1="{{ wall.y1 }}" x2="{{ wall.x2 }}" y2="{{ wall.y2 }}" class="svg-fp-wall"/>
-                            {% endfor %}
-                        </svg>
-                        {% endif %}{% endfor %}
-                        <text x="185" y="-8" text-anchor="middle" font-size="13" font-weight="800"
-                              fill="#2c2926" font-family="Arial,sans-serif"
-                              style="paint-order:stroke;stroke:#fff;stroke-width:3;stroke-linejoin:round">
-                            Building 69
-                        </text>
-                    </g>
-
-                    {# ── POI labels ── #}
-                    <g font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#4f4840">
-                        <rect x="248" y="96"  width="100" height="22" rx="5"
-                              fill="rgba(255,255,255,0.82)" stroke="#d4cdc4"/>
-                        <text x="298" y="112" text-anchor="middle">🚲 Bike racks</text>
-                        <rect x="60"  y="400" width="132" height="22" rx="5"
-                              fill="rgba(255,255,255,0.82)" stroke="#d4cdc4"/>
-                        <text x="126" y="416" text-anchor="middle">🍎 Vending machines</text>
-                        <rect x="560" y="778" width="148" height="22" rx="5"
-                              fill="rgba(255,255,255,0.82)" stroke="#d4cdc4"/>
-                        <text x="634" y="794" text-anchor="middle">♿ Accessible toilets</text>
-                    </g>
-                </svg>
+            <div class="mazemap-shell">
+                <div id="mazemap-container" class="mazemap-sdk"></div>
+                <iframe
+                    class="mazemap-fallback"
+                    src="{{ uq_map_embed_url }}"
+                    title="{% if to_node %}UQ map for {{ to_node.label }}{% else %}UQ St Lucia map{% endif %}"
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"></iframe>
             </div>
 
-            {# ── compact legend + building links (bottom-right HTML overlay) ── #}
-            {% if map_floors %}
-            <div class="map-fp-legend">
-                <div class="map-fp-legend-title">
-                    {% for f in floor_options %}{% if f.value == selected_floor %}{{ f.label }}{% endif %}{% endfor %}
-                    &mdash; St Lucia
-                </div>
-                <div class="map-fp-legend-body">
-                    <div class="map-fp-legend-item">
-                        <div class="map-fp-legend-swatch" style="background:rgba(186,230,184,0.97);border-color:rgba(56,142,60,0.7)"></div>Teaching / Lecture
-                    </div>
-                    <div class="map-fp-legend-item">
-                        <div class="map-fp-legend-swatch" style="background:rgba(179,216,252,0.97);border-color:rgba(30,120,200,0.65)"></div>Computer Lab
-                    </div>
-                    <div class="map-fp-legend-item">
-                        <div class="map-fp-legend-swatch" style="background:rgba(255,244,140,0.97);border-color:rgba(180,140,10,0.6)"></div>Office
-                    </div>
-                    <div class="map-fp-legend-item">
-                        <div class="map-fp-legend-swatch" style="background:rgba(200,210,255,0.97);border-color:rgba(80,100,200,0.6)"></div>Meeting Room
-                    </div>
-                    <div class="map-fp-legend-item">
-                        <div class="map-fp-legend-swatch" style="background:rgba(120,188,118,0.97);border-color:rgba(34,110,34,0.72)"></div>Stairs / Lift
-                    </div>
-                    <div class="map-fp-legend-item">
-                        <div class="map-fp-legend-swatch" style="background:rgba(200,215,222,0.97);border-color:rgba(80,108,120,0.6)"></div>Toilet / WC
-                    </div>
-                    <div class="map-fp-legend-item">
-                        <div class="map-fp-legend-swatch" style="background:rgba(246,243,238,0.92);border-color:#787060"></div>Other
-                    </div>
-                </div>
-                <div class="map-fp-legend-links">
-                    {% for item in map_floors %}
-                    <a href="{% url 'building_detail' item.building.id %}?floor={{ item.floor.level }}">
-                        {{ item.building.name }} &rarr;
-                    </a>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            <div class="focus-note">
-                <strong>Floor plan overlay</strong><br>
-                Rooms are colour-coded by type inside each building. Use the dropdown to change floors. Click a building link to open its full interactive map.
-            </div>
         </section>
+
     </main>
+
+    {# ══ BOTTOM DRAWER: step-by-step directions — fixed 20vh, show/hide only ══ #}
+    {% if path %}
+    {% with path|last as last_node %}
+    <div class="route-drawer is-open" id="route-drawer" aria-label="Route directions">
+        {# ── Purple pill handle — sits at the very top, always visible ── #}
+        <div class="drawer-pill-wrap">
+            <button class="drawer-toggle-pill" id="drawer-toggle-pill" type="button" aria-label="Toggle directions">
+                <svg class="pill-chevron" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 9l-6 6-6-6"/>
+                </svg>
+                <span class="pill-label">Close</span>
+            </button>
+        </div>
+        {# ── Header row: step count + close button (frozen, never scrolls) ── #}
+        <div class="drawer-header">
+            <span class="drawer-step-count">
+                {{ simplified_segments|length }} step{{ simplified_segments|length|pluralize }}
+            </span>
+            <span class="drawer-route-label">{{ from_node.label }} → {{ last_node.label }}</span>
+        </div>
+
+        {# ── Scrollable step list (scrolls independently of the frozen header) ── #}
+        <div class="drawer-scroll" id="drawer-scroll">
+            {% if simplified_segments %}
+            {% for segment in simplified_segments %}
+            <div class="direction-step">
+                <div class="step-num">{{ forloop.counter }}</div>
+                <div class="step-content">
+                    <div class="step-description">{{ segment.description }}</div>
+                    {% if segment.turn_direction or segment.intermediate_nodes %}
+                    <div class="step-meta">
+                        {% if segment.turn_direction %}<span class="tag">{{ segment.turn_direction }}</span>{% endif %}
+                        {% if segment.intermediate_nodes|length > 0 %}<span class="secondary">via {{ segment.intermediate_nodes|length }} location{{ segment.intermediate_nodes|length|pluralize }}</span>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            {% for node in path %}
+            <div class="step">
+                <div class="step-num">{{ forloop.counter }}</div>
+                <div>
+                    <div>{{ node.label }}<span class="tag">{{ node.type }}</span></div>
+                    <div class="step-meta">{{ node.building }} · Floor {{ node.floor }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+    {% endwith %}
+    {% endif %}
+
+    {# ══ TIMETABLE PANEL (slides in from right) ══ #}
+    <div class="tt-panel-overlay" id="tt-panel-overlay" aria-hidden="true"></div>
+    <aside class="tt-panel" id="tt-panel" aria-label="Today's class schedule" aria-hidden="true">
+        <div class="tt-panel-head">
+            <div>
+                <div class="tt-panel-title">Today's Schedule</div>
+                <div class="tt-panel-date" id="tt-panel-date"></div>
+            </div>
+            <button class="tt-panel-close" id="tt-panel-close" type="button" aria-label="Close timetable">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="tt-panel-scroll" id="tt-panel-scroll">
+            <!-- populated by JS -->
+        </div>
+    </aside>
+
+    {# ══ DEPARTURE REMINDER CARD (slides in from top, swipe to dismiss) ══ #}
+    <div class="reminder-card" id="reminder-card" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="reminder-inner">
+            <span class="reminder-bell" aria-hidden="true">🔔</span>
+            <div class="reminder-body">
+                <div class="reminder-title" id="reminder-title">Time to head out!</div>
+                <div class="reminder-meta"  id="reminder-meta"></div>
+            </div>
+            <button class="reminder-close" id="reminder-close" type="button" aria-label="Dismiss reminder">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <a class="reminder-dir-btn" id="reminder-dir-btn" href="#">Get Directions →</a>
+        <p class="reminder-swipe-hint">← swipe to dismiss →</p>
+    </div>
+
 </div>
+
+<style>
+/* ── Reminder card ── */
+.reminder-card {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translate(-50%, calc(-100% - 100px));
+    width: min(400px, calc(100vw - 24px));
+    background: #fff;
+    border-radius: 20px;
+    border-left: 5px solid #51247A;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+    padding: 16px 18px 12px;
+    z-index: 300;
+    transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity   0.42s ease;
+    opacity: 0;
+    pointer-events: none;
+    user-select: none;
+    touch-action: pan-y;
+}
+.reminder-card.visible {
+    transform: translate(-50%, 0);
+    opacity: 1;
+    pointer-events: auto;
+}
+.reminder-card.fly-left  { transform: translate(calc(-150vw));  opacity: 0; transition: transform 0.32s ease-in, opacity 0.32s ease-in; }
+.reminder-card.fly-right { transform: translate(calc(100vw));   opacity: 0; transition: transform 0.32s ease-in, opacity 0.32s ease-in; }
+.reminder-card.no-transition { transition: none !important; }
+
+.reminder-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.reminder-bell {
+    font-size: 24px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.reminder-body { flex: 1; min-width: 0; }
+.reminder-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #2d2926;
+    line-height: 1.25;
+}
+.reminder-meta {
+    font-size: 12px;
+    color: #7a7068;
+    margin-top: 3px;
+    line-height: 1.4;
+}
+.reminder-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #aaa;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: color 0.15s;
+}
+.reminder-close:hover { color: #51247A; }
+.reminder-dir-btn {
+    display: block;
+    margin-top: 12px;
+    background: #51247A;
+    color: #fff;
+    text-decoration: none;
+    text-align: center;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 800;
+    font-family: Arial, sans-serif;
+    transition: background 0.15s;
+}
+.reminder-dir-btn:hover { background: #3d1a5e; }
+.reminder-swipe-hint {
+    text-align: center;
+    font-size: 10px;
+    color: #bbb;
+    margin-top: 8px;
+    letter-spacing: 0.04em;
+}
+/* ── Topbar UQ logo ── */
+.topbar-uq-logo {
+    height: 46px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+}
+@media (max-width: 480px) {
+    .topbar-uq-logo { height: 38px; }
+}
+
+/* ── Route back button (circular, matches onboarding btn-back style) ── */
+.route-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(81, 36, 122, 0.08);
+    border-radius: 50%;
+    color: #51247A;
+    text-decoration: none;
+    flex-shrink: 0;
+    align-self: center;
+    transition: background 0.15s;
+}
+.route-back-btn:hover  { background: rgba(81, 36, 122, 0.16); }
+.route-back-btn:active { background: rgba(81, 36, 122, 0.24); }
+
+/* ── Upcoming class strip ── */
+.upcoming-bar {
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(229, 222, 214, 0.9);
+    border-left: 4px solid #51247A;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(45, 41, 38, 0.14);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 14px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ub-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ub-badge {
+    background: #51247A;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 3px 9px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+
+.ub-time {
+    font-size: 12px;
+    font-weight: 700;
+    color: #51247A;
+    letter-spacing: 0.04em;
+}
+
+.ub-code {
+    font-size: 17px;
+    font-weight: 800;
+    color: #2d2926;
+    line-height: 1.2;
+}
+
+.ub-type {
+    font-size: 12px;
+    color: #7a7068;
+    line-height: 1.4;
+}
+
+.ub-loc {
+    font-size: 12px;
+    color: #4f4840;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ub-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.ub-walk {
+    font-size: 12px;
+    color: #7a7068;
+}
+
+.ub-dir-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #51247A;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 10px;
+    padding: 8px 13px;
+    font-size: 12px;
+    font-weight: 800;
+    font-family: Arial, sans-serif;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.ub-dir-btn:hover { background: #3d1a5e; }
+
+/* ── Timetable topbar button ── */
+.timetable-topbar-btn {
+    margin-left: auto;
+    background: rgba(255,255,255,0.18);
+    border: none;
+    border-radius: 10px;
+    padding: 7px 11px;
+    cursor: pointer;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: Arial, sans-serif;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.timetable-topbar-btn:hover { background: rgba(255,255,255,0.28); }
+.timetable-topbar-btn:active { background: rgba(255,255,255,0.35); }
+
+/* ── Timetable panel overlay ── */
+.tt-panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 390;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.tt-panel-overlay.open { opacity: 1; pointer-events: auto; }
+
+/* ── Timetable slide-in panel ── */
+.tt-panel {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(360px, 100vw);
+    background: #51247A;
+    z-index: 400;
+    transform: translateX(100%);
+    transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 32px rgba(0,0,0,0.3);
+}
+.tt-panel.open { transform: translateX(0); }
+
+.tt-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 60px 20px 16px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.14);
+}
+
+.tt-panel-title {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 800;
+    font-family: Arial, sans-serif;
+    line-height: 1.2;
+}
+
+.tt-panel-date {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.52);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+.tt-panel-close {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    cursor: pointer;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.tt-panel-close:hover { background: rgba(255,255,255,0.25); }
+
+.tt-panel-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 16px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overscroll-behavior: contain;
+}
+
+.tt-empty {
+    color: rgba(255,255,255,0.65);
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 48px 20px;
+    line-height: 1.7;
+}
+.tt-empty a { color: rgba(255,255,255,0.85); font-weight: 700; }
+
+/* ── Class cards inside timetable panel ── */
+.tp-card {
+    background: #6b3a96;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: opacity 0.2s;
+}
+.tp-card.tp-past { opacity: 0.38; }
+.tp-card.tp-next {
+    background: #fff;
+    border-color: transparent;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.22);
+}
+
+.tp-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.tp-time {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.6);
+}
+.tp-card.tp-next .tp-time { color: #51247A; }
+
+.tp-badge {
+    background: #51247A;
+    color: #fff;
+    font-size: 10px; font-weight: 800;
+    border-radius: 999px;
+    padding: 3px 9px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.tp-code {
+    font-size: 16px; font-weight: 800;
+    color: #fff; line-height: 1.2;
+}
+.tp-card.tp-next .tp-code { color: #2d2926; }
+
+.tp-type {
+    font-size: 12px;
+    color: rgba(255,255,255,0.65);
+}
+.tp-card.tp-next .tp-type { color: #7a7068; }
+
+.tp-loc {
+    font-size: 12px;
+    color: rgba(255,255,255,0.75);
+    display: flex; align-items: center; gap: 5px;
+}
+.tp-card.tp-next .tp-loc { color: #4f4840; }
+
+.tp-walk {
+    font-size: 12px;
+    color: rgba(255,255,255,0.58);
+}
+.tp-card.tp-next .tp-walk { color: #7a7068; }
+
+.tp-dir {
+    display: inline-flex;
+    align-items: center; gap: 5px;
+    margin-top: 6px;
+    background: #51247A;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 10px;
+    padding: 8px 13px;
+    font-size: 12px; font-weight: 800;
+    font-family: Arial, sans-serif;
+    align-self: flex-start;
+    transition: background 0.15s;
+}
+.tp-dir:hover { background: #3d1a5e; }
+
+/* walking time badge in route bar */
+.route-time-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.15);
+    border-radius: 999px;
+    padding: 4px 10px;
+    white-space: nowrap;
+    align-self: center;
+    margin-left: auto;
+}
+</style>
+
+<script>
+/* ── Departure Reminder System ──────────────────────────────────────────── */
+(function () {
+    var card     = document.getElementById('reminder-card');
+    var titleEl  = document.getElementById('reminder-title');
+    var metaEl   = document.getElementById('reminder-meta');
+    var dirBtn   = document.getElementById('reminder-dir-btn');
+    var closeBtn = document.getElementById('reminder-close');
+    if (!card) return;
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function simNow() {
+        var offset = parseInt(localStorage.getItem('uq_sim_offset_min') || '0', 10);
+        return new Date(Date.now() + offset * 60000);
+    }
+
+    function totalMin(h, m) { return h * 60 + m; }
+
+    // ── Show / dismiss ───────────────────────────────────────────────────────
+    var currentClass = null;
+
+    function showCard(cls) {
+        currentClass = cls;
+        titleEl.textContent = 'Time to head to ' + cls.code + '!';
+        metaEl.textContent  = cls.building + ' · Room ' + cls.room
+            + ' · ~' + cls.walk_min + ' min walk';
+        dirBtn.href = '/?to=' + encodeURIComponent(cls.to)
+            + (cls.from ? '&from=' + encodeURIComponent(cls.from) : '');
+        card.classList.add('visible');
+    }
+
+    function dismissCard(direction) {
+        if (!card.classList.contains('visible')) return;
+        card.classList.remove('visible');
+        card.classList.add(direction === 'right' ? 'fly-right' : 'fly-left');
+        // Mark this class's reminder as shown for this session
+        if (currentClass) {
+            var key = currentClass.time_h + ':' + currentClass.time_m;
+            try { sessionStorage.setItem('uq_reminded_' + key, '1'); } catch (e) { console.warn(e); }
+        }
+        setTimeout(function () {
+            card.classList.remove('fly-left', 'fly-right');
+            currentClass = null;
+        }, 400);
+    }
+
+    closeBtn.addEventListener('click', function () { dismissCard('left'); });
+    dirBtn.addEventListener('click',   function () { dismissCard('right'); });
+
+    // ── Swipe to dismiss (pointer events — works for both touch & mouse) ─────
+    var dragStartX = 0, dragCurrentX = 0, isDragging = false;
+
+    card.addEventListener('pointerdown', function (e) {
+        if (e.target.closest('a, button')) return;
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragCurrentX = e.clientX;
+        card.classList.add('no-transition');
+        card.setPointerCapture(e.pointerId);
+    });
+
+    card.addEventListener('pointermove', function (e) {
+        if (!isDragging) return;
+        dragCurrentX = e.clientX;
+        var delta = dragCurrentX - dragStartX;
+        // Card is centred with translate(-50%, 0); add horizontal drag offset
+        card.style.transform = 'translate(calc(-50% + ' + delta + 'px), 0)';
+        card.style.opacity   = String(Math.max(0, 1 - Math.abs(delta) / 200));
+    });
+
+    card.addEventListener('pointerup', function (e) {
+        if (!isDragging) return;
+        isDragging = false;
+        card.classList.remove('no-transition');
+        card.style.transform = '';
+        card.style.opacity   = '';
+        var delta = dragCurrentX - dragStartX;
+        if (Math.abs(delta) > 80) {
+            dismissCard(delta > 0 ? 'right' : 'left');
+        }
+        // else: snap back (transition re-applied, visible class keeps it at 0)
+    });
+
+    card.addEventListener('pointercancel', function () {
+        isDragging = false;
+        card.classList.remove('no-transition');
+        card.style.transform = '';
+        card.style.opacity   = '';
+    });
+
+    // ── Update localStorage walk time when a real route result is shown ──────
+    {% if walking_minutes and to_q and from_q %}
+    (function () {
+        try {
+            var raw = localStorage.getItem('uq_schedule');
+            if (!raw) return;
+            var sched = JSON.parse(raw);
+            var toQ   = '{{ to_q|escapejs }}';
+            var fromQ = '{{ from_q|escapejs }}';
+            var wMin  = {{ walking_minutes }};
+            sched.classes.forEach(function (cls) {
+                if (cls.to === toQ && cls.from === fromQ) {
+                    cls.walk_min = wMin;
+                }
+            });
+            localStorage.setItem('uq_schedule', JSON.stringify(sched));
+        } catch (lsErr) { console.warn('schedule update failed', lsErr); }
+    }());
+    {% endif %}
+
+    // ── Reminder scheduler ───────────────────────────────────────────────────
+    function checkReminders() {
+        if (localStorage.getItem('uq_reminders') !== '1') return;
+        var raw = localStorage.getItem('uq_schedule');
+        if (!raw) return;
+        var sched;
+        try { sched = JSON.parse(raw); } catch (parseErr) { console.warn(parseErr); return; }
+
+        var now        = simNow();
+        var nowMin     = totalMin(now.getHours(), now.getMinutes());
+
+        for (var i = 0; i < sched.classes.length; i++) {
+            var cls = sched.classes[i];
+            // Remind at: class_time − walk_min − 5 min buffer
+            var classMin  = totalMin(cls.time_h, cls.time_m);
+            var remindMin = classMin - cls.walk_min - 5;
+            // Only within the remind window and before the class starts
+            if (nowMin < remindMin || nowMin >= classMin) continue;
+            // Skip if already reminded this session
+            var key = cls.time_h + ':' + cls.time_m;
+            try { if (sessionStorage.getItem('uq_reminded_' + key)) continue; } catch (e) { console.warn(e); }
+            // Don't re-show if card is already visible for this class
+            if (card.classList.contains('visible')) continue;
+            showCard(cls);
+            break;
+        }
+    }
+
+    // Check on load and every 30 seconds
+    checkReminders();
+    setInterval(checkReminders, 30000);
+}());
+</script>
+
 <script>
 (function () {
+
+    // ── Candidate button handler (from-field disambiguation) ──────────────────
     function selectCandidate(field, id, label) {
         var input   = document.getElementById(field + '-input');
         var idInput = document.getElementById(field + '-id-input');
@@ -1798,17 +918,10 @@
         if (idInput) idInput.value = id;
         if (row)     row.classList.add('confirmed-row');
         if (drop)    drop.style.display = 'none';
-
-        // Auto-submit once both ends are chosen
-        var fromId = document.getElementById('from-id-input');
-        var toId   = document.getElementById('to-id-input');
-        if (fromId && toId && fromId.value && toId.value) {
-            document.getElementById('route-form').submit();
-        }
+        // No auto-submit: user must click "Get Directions" to trigger the route
     }
 
-    // Candidate button clicks
-    document.querySelectorAll('.cand-btn').forEach(function (btn) {
+    document.querySelectorAll('.cand-btn[data-field]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             if (this.dataset.href) {
                 window.location.href = this.dataset.href;
@@ -1818,22 +931,20 @@
         });
     });
 
-    // Typing in the input clears the confirmed selection and reopens the dropdown
-    ['from', 'to'].forEach(function (field) {
-        var input   = document.getElementById(field + '-input');
-        var idInput = document.getElementById(field + '-id-input');
-        var row     = document.getElementById(field + '-row');
-        var drop    = document.getElementById(field + '-drop');
-        if (!input) return;
-
-        input.addEventListener('input', function () {
-            if (idInput) idInput.value = '';
-            if (row)     row.classList.remove('confirmed-row');
-            if (drop)    drop.style.display = '';
+    // Typing in from-input clears the confirmed id and reopens the dropdown
+    var fromInput   = document.getElementById('from-input');
+    var fromIdInput = document.getElementById('from-id-input');
+    var fromRow     = document.getElementById('from-row');
+    var fromDrop    = document.getElementById('from-drop');
+    if (fromInput) {
+        fromInput.addEventListener('input', function () {
+            if (fromIdInput) fromIdInput.value = '';
+            if (fromRow)     fromRow.classList.remove('confirmed-row');
+            if (fromDrop)    fromDrop.style.display = '';
         });
-    });
+    }
 
-    // Click outside any field-wrap → close all dropdowns
+    // Click outside field-wrap → close all candidate dropdowns
     document.addEventListener('click', function (e) {
         if (!e.target.closest('.field-wrap')) {
             document.querySelectorAll('.candidates-drop').forEach(function (d) {
@@ -1842,134 +953,792 @@
         }
     });
 
-    // ── Sidebar collapse / expand ──────────────────────────────────────────
-    (function () {
-        var main   = document.getElementById('main-layout');
-        var toggle = document.getElementById('sidebar-toggle');
-        if (!main || !toggle) return;
+    // ── Glow validation: block submit and pulse the from-field if empty ────────
+    var fromForm = document.getElementById('from-form');
+    if (fromForm && fromInput && fromRow) {
+        fromForm.addEventListener('submit', function (e) {
+            // Allow submit if: text typed OR a node ID is already resolved
+            var hasText = fromInput.value.trim().length > 0;
+            var hasId   = fromIdInput && fromIdInput.value.trim().length > 0;
+            if (hasText || hasId) return;   // valid — let the form go
 
-        var STORAGE_KEY = 'uq-sidebar-collapsed';
+            e.preventDefault();
 
-        function isCollapsed() {
-            return main.classList.contains('sidebar-collapsed');
-        }
+            // Restart the animation (handles repeated clicks)
+            fromRow.classList.remove('needs-glow');
+            void fromRow.offsetWidth;           // force reflow to reset keyframe
+            fromRow.classList.add('needs-glow');
 
-        var SIDEBAR_WIDTH = 390; // must match CSS grid column width
+            // Focus the empty field so the keyboard opens on mobile
+            fromInput.focus();
 
-        function setCollapsed(collapsed) {
-            if (collapsed) {
-                main.classList.add('sidebar-collapsed');
-                toggle.classList.add('is-collapsed');
-                toggle.style.left = '0px';
-                toggle.setAttribute('aria-expanded', 'false');
-                toggle.setAttribute('title', 'Show sidebar');
-            } else {
-                main.classList.remove('sidebar-collapsed');
-                toggle.classList.remove('is-collapsed');
-                toggle.style.left = SIDEBAR_WIDTH + 'px';
-                toggle.setAttribute('aria-expanded', 'true');
-                toggle.setAttribute('title', 'Hide sidebar');
-            }
-            try {
-                localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
-            } catch (storageErr) {
-                // localStorage unavailable (private browsing, storage full, etc.) — silently skip persistence
-                console.debug('Sidebar state could not be saved:', storageErr);
-            }
-        }
-
-        // Restore last state from localStorage
-        try {
-            if (localStorage.getItem(STORAGE_KEY) === '1') {
-                setCollapsed(true);
-            }
-        } catch (storageErr) {
-            // localStorage unavailable — default to expanded sidebar
-            console.debug('Sidebar state could not be restored:', storageErr);
-        }
-
-        toggle.addEventListener('click', function (e) {
-            e.stopPropagation();   // prevent dropdown-close handler firing
-            setCollapsed(!isCollapsed());
+            // Clean up the class once the animation finishes
+            fromRow.addEventListener('animationend', function () {
+                fromRow.classList.remove('needs-glow');
+            }, { once: true });
         });
+    }
+
+    // ── Change-destination: ✕ swaps the confirmed dest row for a live search input ──
+    (function () {
+        var changeDestBtn  = document.getElementById('change-dest-btn');
+        var destToRow      = document.getElementById('dest-to-row');
+        var toChangeRow    = document.getElementById('to-change-row');
+        var toChangeInput  = document.getElementById('to-change-input');
+        var destSubmitWrap = document.getElementById('dest-submit-wrap');
+        var toIdInput      = document.querySelector('input[name="to_id"]');
+        if (!changeDestBtn || !destToRow || !toChangeRow) return;
+
+        changeDestBtn.addEventListener('click', function () {
+            // Hide the confirmed destination display
+            destToRow.style.display = 'none';
+            // Clear the resolved to_id so the server does a fresh text search
+            if (toIdInput) toIdInput.value = '';
+            // Hide Get Directions until a new destination is confirmed
+            if (destSubmitWrap) destSubmitWrap.style.display = 'none';
+            // Show the destination search input
+            toChangeRow.style.display = '';
+            if (toChangeInput) toChangeInput.focus();
+        });
+
+        // Pressing Enter in the destination input submits the form *without* the
+        // get_directions flag — server resolves the new destination then shows Panel B.
+        if (toChangeInput) {
+            toChangeInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    // form.submit() sends no button name/value → no get_directions flag
+                    this.form.submit();
+                }
+            });
+        }
     }());
 
-    // Floor accordion toggle
-    window.toggleFloor = function(button) {
-        var content = button.nextElementSibling;
-        var isOpen = content.style.display !== 'none';
-        
-        // Close all other floors
-        document.querySelectorAll('.floor-content').forEach(function(el) {
-            el.style.display = 'none';
-        });
-        document.querySelectorAll('.floor-header').forEach(function(el) {
-            el.classList.remove('open');
-        });
-        
-        // Toggle current floor
-        if (isOpen) {
-            content.style.display = 'none';
-            button.classList.remove('open');
-        } else {
-            content.style.display = 'block';
-            button.classList.add('open');
-        }
-    };
+    // ── Steps drawer: show / hide only (fixed 20vh, defaults open) ──────────
+    (function () {
+        var drawer      = document.getElementById('route-drawer');
+        var togglePill  = document.getElementById('drawer-toggle-pill');
+        var pillLabel   = togglePill && togglePill.querySelector('.pill-label');
+        var pillChevron = togglePill && togglePill.querySelector('.pill-chevron');
+        if (!drawer) return;
 
-    // Auto-open first floor
-    var firstFloor = document.querySelector('.floor-header');
-    if (firstFloor) {
-        firstFloor.click();
+        // Drawer starts open (is-open class is set in the template)
+        var isOpen = true;
+
+        function updatePill() {
+            if (!togglePill) return;
+            // ∨ chevron (no rotation) = "click to close"  |  ∧ chevron (rotate 180°) = "click to open"
+            if (isOpen) {
+                if (pillLabel)   pillLabel.textContent       = 'Close';
+                if (pillChevron) pillChevron.style.transform = '';              // ∨ push down to close
+            } else {
+                if (pillLabel)   pillLabel.textContent       = 'Steps';
+                if (pillChevron) pillChevron.style.transform = 'rotate(180deg)'; // ∧ pull up to open
+            }
+        }
+
+        function showDrawer() {
+            isOpen = true;
+            drawer.classList.add('is-open');
+            updatePill();
+        }
+
+        function hideDrawer() {
+            isOpen = false;
+            drawer.classList.remove('is-open');
+            updatePill();
+        }
+
+        // Sync pill label with the initial open state
+        updatePill();
+
+        // Purple toggle pill → open / close
+        if (togglePill) {
+            togglePill.addEventListener('click', function () {
+                isOpen ? hideDrawer() : showDrawer();
+            });
+            togglePill.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    isOpen ? hideDrawer() : showDrawer();
+                }
+            });
+        }
+    }());
+
+    // ── Drag-to-pan campus map ────────────────────────────────────────────────
+    (function () {
+        var mapWrap = document.querySelector('.map-wrap');
+        if (!mapWrap) return;
+        if (document.getElementById('mazemap-container')) return;
+
+        if (mapWrap.scrollLeft === 0 && mapWrap.scrollTop === 0) {
+            mapWrap.scrollLeft = 180;
+            mapWrap.scrollTop  = 70;
+        }
+
+        var isPanning = false, startX = 0, startY = 0, startScrollLeft = 0, startScrollTop = 0;
+
+        function isInteractiveTarget(target) {
+            return target.closest('a, button, input, select, textarea, .map-toolbar, .map-fp-legend');
+        }
+
+        mapWrap.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0 || isInteractiveTarget(e.target)) return;
+            isPanning = true;
+            startX = e.clientX; startY = e.clientY;
+            startScrollLeft = mapWrap.scrollLeft; startScrollTop = mapWrap.scrollTop;
+            mapWrap.classList.add('is-panning');
+            mapWrap.setPointerCapture(e.pointerId);
+        });
+
+        mapWrap.addEventListener('pointermove', function (e) {
+            if (!isPanning) return;
+            mapWrap.scrollLeft = startScrollLeft - (e.clientX - startX);
+            mapWrap.scrollTop  = startScrollTop  - (e.clientY - startY);
+        });
+
+        function stopPanning(e) {
+            if (!isPanning) return;
+            isPanning = false;
+            mapWrap.classList.remove('is-panning');
+            if (e && mapWrap.hasPointerCapture(e.pointerId)) mapWrap.releasePointerCapture(e.pointerId);
+        }
+
+        mapWrap.addEventListener('pointerup',     stopPanning);
+        mapWrap.addEventListener('pointercancel', stopPanning);
+        mapWrap.addEventListener('pointerleave',  stopPanning);
+    }());
+
+}());
+
+// ── Route markers on campus map ───────────────────────────────────────────────
+// MazeMap SDK map surface
+(function () {
+    var container = document.getElementById('mazemap-container');
+    var fallback = document.querySelector('.mazemap-fallback');
+    if (!container) return;
+
+    var routeCoords = {{ path_coords|default:"[]"|safe }};
+    var selectedFloor = "{{ selected_floor|escapejs }}";
+    var fromPoint = {% if from_node and from_node.lat and from_node.lng %}{
+        lat: {{ from_node.lat }},
+        lng: {{ from_node.lng }},
+        label: "{{ from_node.label|escapejs }}",
+        floor: "{{ from_node.floor|escapejs }}"
+    }{% else %}null{% endif %};
+    var toPoint = {% if to_node and to_node.lat and to_node.lng %}{
+        lat: {{ to_node.lat }},
+        lng: {{ to_node.lng }},
+        label: "{{ to_node.label|escapejs }}",
+        floor: "{{ to_node.floor|escapejs }}"
+    }{% else %}null{% endif %};
+
+    function numberOr(value, fallbackValue) {
+        var parsed = parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : fallbackValue;
+    }
+
+    function centerPoint() {
+        if (toPoint) return { lng: toPoint.lng, lat: toPoint.lat };
+        if (fromPoint) return { lng: fromPoint.lng, lat: fromPoint.lat };
+        return { lng: 153.01222576055739, lat: -27.49907705145847 };
+    }
+
+    function showFallback() {
+        container.style.display = 'none';
+        if (fallback) fallback.style.display = 'block';
+    }
+
+    function addMarker(map, point, type) {
+        if (!point || !window.Mazemap || !Mazemap.MazeMarker) return;
+        var marker = new Mazemap.MazeMarker({
+            color: type === 'start' ? '#5aa354' : '#dc2626',
+            innerCircle: true,
+            innerCircleColor: '#ffffff',
+            size: 34
+        })
+            .setLngLat({ lng: point.lng, lat: point.lat })
+            .addTo(map);
+
+        if (marker.getElement) {
+            marker.getElement().title = point.label;
+        }
+    }
+
+    function hideMazeMapFloorControl() {
+        var selectors = [
+            '.mazemap-zlevel-bar',
+            '.mazemap-zlevel-control',
+            '.mazemap-zlevel-control-container',
+            '.mazemap-z-level-control',
+            '.mapboxgl-ctrl-zlevel',
+            '[class*="zlevel" i]',
+            '[class*="z-level" i]'
+        ];
+        document.querySelectorAll(selectors.join(',')).forEach(function (el) {
+            if (el.closest('.map-toolbar')) return;
+            el.style.display = 'none';
+            el.setAttribute('aria-hidden', 'true');
+        });
+    }
+
+    // ── Floor-aware route drawing ────────────────────────────────────────────
+    // When start and destination are on different floors the map auto-shows
+    // the destination's floor.  We draw:
+    //   • solid purple line  — portion on the destination floor
+    //   • dashed faded line  — portion on the start floor (before the transition)
+
+    function _makeGeoJson(coordsArr) {
+        return {
+            type: 'FeatureCollection',
+            features: [{
+                type: 'Feature', properties: {},
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordsArr.map(function (c) { return [c.lng, c.lat]; })
+                }
+            }]
+        };
+    }
+
+    function _drawSegment(map, id, coordsArr, dashed) {
+        if (!coordsArr || coordsArr.length < 2) return;
+        var geojson = _makeGeoJson(coordsArr);
+        if (map.getSource && map.getSource(id)) {
+            map.getSource(id).setData(geojson);
+            return;
+        }
+        map.addSource(id, { type: 'geojson', data: geojson });
+
+        if (dashed) {
+            // Soft halo
+            map.addLayer({
+                id: id + '-glow', type: 'line', source: id,
+                layout: { 'line-cap': 'butt', 'line-join': 'round' },
+                paint: { 'line-color': '#c0b0d8', 'line-width': 8,
+                         'line-opacity': 0.35, 'line-dasharray': [2.5, 3.5] }
+            });
+            // Dashed line
+            map.addLayer({
+                id: id + '-line', type: 'line', source: id,
+                layout: { 'line-cap': 'butt', 'line-join': 'round' },
+                paint: { 'line-color': '#7a3fa8', 'line-width': 4,
+                         'line-opacity': 0.5, 'line-dasharray': [2.5, 3.5] }
+            });
+        } else {
+            // White glow
+            map.addLayer({
+                id: id + '-glow', type: 'line', source: id,
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: { 'line-color': '#ffffff', 'line-width': 10, 'line-opacity': 0.82 }
+            });
+            // Solid UQ-purple line
+            map.addLayer({
+                id: id + '-line', type: 'line', source: id,
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: { 'line-color': '#51247A', 'line-width': 6, 'line-opacity': 0.94 }
+            });
+        }
+    }
+
+    function addRouteLayer(map) {
+        if (!routeCoords || routeCoords.length < 2 || !map.addSource || !map.addLayer) return;
+
+        var destFloor = toPoint  && toPoint.floor  != null ? String(toPoint.floor)  : '';
+        var fromFloor = fromPoint && fromPoint.floor != null ? String(fromPoint.floor) : '';
+        var multiFloor = destFloor && fromFloor && destFloor !== fromFloor;
+
+        // Only split when we have per-coordinate floor data (dijkstra or MazeMap with zLevel)
+        var hasFloorData = multiFloor &&
+            routeCoords.some(function (c) { return c.floor != null; });
+
+        if (!hasFloorData) {
+            // Same floor or no floor data → single solid line
+            _drawSegment(map, 'uq-route', routeCoords, false);
+            return;
+        }
+
+        // Split at the first point that reaches the destination floor.
+        // Everything before (start-floor portion) → dashed.
+        // Everything from the transition point onwards → solid.
+        var dashedCoords = [];
+        var solidCoords  = [];
+        var inDest = false;
+
+        for (var i = 0; i < routeCoords.length; i++) {
+            var c  = routeCoords[i];
+            var cf = c.floor != null ? String(c.floor) : null;
+            if (!inDest) {
+                dashedCoords.push(c);
+                if (cf === destFloor) {
+                    inDest = true;
+                    solidCoords.push(c);   // shared transition point keeps the lines connected
+                }
+            } else {
+                solidCoords.push(c);
+            }
+        }
+
+        if (solidCoords.length >= 2) {
+            // Normal case: we found the floor transition
+            _drawSegment(map, 'uq-route-dashed', dashedCoords, true);
+            _drawSegment(map, 'uq-route-solid',  solidCoords,  false);
+        } else {
+            // Transition not found in coord data — draw everything solid as fallback
+            _drawSegment(map, 'uq-route', routeCoords, false);
+        }
+    }
+
+    function fitRoute(map) {
+        if (!routeCoords || routeCoords.length < 2 || !window.Mazemap || !Mazemap.LngLatBounds) return;
+        var bounds = new Mazemap.LngLatBounds();
+        routeCoords.forEach(function (coord) {
+            bounds.extend([coord.lng, coord.lat]);
+        });
+        map.fitBounds(bounds, { padding: 90, maxZoom: 20 });
+    }
+
+    try {
+        if (!window.Mazemap || !Mazemap.Map) {
+            showFallback();
+            return;
+        }
+
+        if (fallback) fallback.style.display = 'none';
+        var map = new Mazemap.Map({
+            container: 'mazemap-container',
+            campuses: 406,
+            center: centerPoint(),
+            zoom: routeCoords && routeCoords.length ? 19.2 : 18.4,
+            zLevel: numberOr((toPoint && toPoint.floor) || (fromPoint && fromPoint.floor) || selectedFloor, 2)
+        });
+
+        map.on('load', function () {
+            try {
+                hideMazeMapFloorControl();
+                window.setTimeout(hideMazeMapFloorControl, 250);
+                window.setTimeout(hideMazeMapFloorControl, 1000);
+                addMarker(map, fromPoint, 'start');
+                addMarker(map, toPoint, 'dest');
+                addRouteLayer(map);
+                fitRoute(map);
+            } catch (error) {
+                showFallback();
+            }
+        });
+
+        map.on('error', showFallback);
+    } catch (error) {
+        showFallback();
     }
 }());
 
-// ── Dotted route path overlay on building floor plans ──────────────────────
+{% if path %}
 (function () {
-    var fpCoords = {{ path_fp_coords_json|safe }};
-    if (!fpCoords || !Object.keys(fpCoords).length) return;
-
-    var NS = 'http://www.w3.org/2000/svg';
-
-    function makeSvgEl(tag, attrs) {
-        var el = document.createElementNS(NS, tag);
-        Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
-        return el;
+    function roomCode(label) {
+        // Labels are "CODE - Room Name"; extract the code before the first " - "
+        return label.split(' - ')[0].trim().toUpperCase();
     }
 
-    Object.keys(fpCoords).forEach(function (groupKey) {
-        var pts = fpCoords[groupKey];
-        if (!pts || pts.length === 0) return;
+    function buildingNumber(building) {
+        var match = (building || '').match(/\b(\d+)\b/);
+        return match ? match[1] : '';
+    }
 
-        var svgEl = document.getElementById('fp-svg-' + groupKey);
-        if (!svgEl) return;   // floor not currently visible — skip
+    function getRoomElement(building, code) {
+        var bNum = buildingNumber(building);
+        var ids = [
+            'b' + bNum + '-room-' + code,
+            'room-' + code
+        ];
 
-        // 1. Dashed path line
-        if (pts.length >= 2) {
-            var pointsStr = pts.map(function (p) { return p.x + ',' + p.y; }).join(' ');
-            svgEl.appendChild(makeSvgEl('polyline', {
-                points: pointsStr,
-                fill: 'none',
-                stroke: '#6B21A8',
-                'stroke-width': '3.5',
-                'stroke-dasharray': '7 4',
-                'stroke-linecap': 'round',
-                'stroke-linejoin': 'round',
-                opacity: '0.88',
-            }));
+        for (var i = 0; i < ids.length; i += 1) {
+            var el = document.getElementById(ids[i]);
+            if (el) return el;
+        }
+        return null;
+    }
+
+    function rectBounds(el) {
+        if (el.tagName.toLowerCase() !== 'rect') return null;
+        var x = parseFloat(el.getAttribute('x') || 0);
+        var y = parseFloat(el.getAttribute('y') || 0);
+        var w = parseFloat(el.getAttribute('width') || 0);
+        var h = parseFloat(el.getAttribute('height') || 0);
+        return { x: x, y: y, w: w, h: h, cx: x + w / 2, cy: y + h / 2 };
+    }
+
+    function addPin(svg, bounds, color, iconType) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var g = document.createElementNS(NS, 'g');
+        g.setAttribute('class', 'svg-route-marker-pin');
+        g.setAttribute('transform', 'translate(' + bounds.cx + ' ' + (bounds.cy - 5.6) + ') scale(0.18)');
+
+        var pin = document.createElementNS(NS, 'path');
+        pin.setAttribute('d', 'M0 -42 C-15 -42 -27 -30 -27 -15 C-27 8 0 42 0 42 C0 42 27 8 27 -15 C27 -30 15 -42 0 -42 Z');
+        pin.setAttribute('fill', color);
+        pin.setAttribute('stroke', '#ffffff');
+        pin.setAttribute('stroke-width', '5');
+        g.appendChild(pin);
+
+        var circle = document.createElementNS(NS, 'circle');
+        circle.setAttribute('cx', '0');
+        circle.setAttribute('cy', '-15');
+        circle.setAttribute('r', '14');
+        circle.setAttribute('fill', '#ffffff');
+        g.appendChild(circle);
+
+        if (iconType === 'dest') {
+            var dot = document.createElementNS(NS, 'circle');
+            dot.setAttribute('cx', '0');
+            dot.setAttribute('cy', '-15');
+            dot.setAttribute('r', '5.5');
+            dot.setAttribute('fill', color);
+            g.appendChild(dot);
+        } else {
+            var startDot = document.createElementNS(NS, 'circle');
+            startDot.setAttribute('cx', '0');
+            startDot.setAttribute('cy', '-15');
+            startDot.setAttribute('r', '6.5');
+            startDot.setAttribute('fill', color);
+            g.appendChild(startDot);
         }
 
-        // 2. Waypoint circles (white fill, purple stroke)
-        pts.forEach(function (p, idx) {
-            var isStart = idx === 0;
-            var isEnd   = idx === pts.length - 1;
-            svgEl.appendChild(makeSvgEl('circle', {
-                cx: p.x, cy: p.y, r: isStart || isEnd ? '4' : '3',
-                fill:          isStart ? '#22c55e' : isEnd ? '#ef4444' : 'white',
-                stroke:        '#6B21A8',
-                'stroke-width': '1.5',
-            }));
+        svg.appendChild(g);
+    }
+
+    function markRoom(building, code, cssClass, frameColor, pinColor, iconType) {
+        var el = getRoomElement(building, code);
+        if (!el) return;
+        el.classList.add(cssClass);
+
+        var svg = el.closest('svg');
+        var bounds = rectBounds(el);
+        if (!svg || !bounds) return;
+
+        var NS = 'http://www.w3.org/2000/svg';
+        var frame = document.createElementNS(NS, 'rect');
+        frame.setAttribute('class', 'svg-route-marker-frame');
+        frame.setAttribute('x', bounds.x);
+        frame.setAttribute('y', bounds.y);
+        frame.setAttribute('width', bounds.w);
+        frame.setAttribute('height', bounds.h);
+        frame.setAttribute('stroke', frameColor);
+        svg.appendChild(frame);
+
+        addPin(svg, bounds, pinColor, iconType);
+    }
+
+    markRoom("{{ from_node.building|escapejs }}", roomCode("{{ from_node.label|escapejs }}"), 'svg-route-start', '#5aa354', '#5aa354', 'start');
+    markRoom("{{ to_node.building|escapejs }}", roomCode("{{ to_node.label|escapejs }}"), 'svg-route-dest', '#dc2626', '#dc2626', 'dest');
+}());
+{% endif %}
+</script>
+<script>
+/* ── Shared helpers + Upcoming bar + Timetable Panel ─────────────────────── */
+(function () {
+
+    // ── Shared helpers ────────────────────────────────────────────────────────
+    function simNow() {
+        var offset = parseInt(localStorage.getItem('uq_sim_offset_min') || '0', 10);
+        return new Date(Date.now() + offset * 60000);
+    }
+    function totalMin(h, m) { return h * 60 + m; }
+    function padZ(n)        { return n < 10 ? '0' + n : '' + n; }
+    function fmtTime(h, m) {
+        var suf = h < 12 ? 'AM' : 'PM';
+        return (h % 12 || 12) + ':' + padZ(m) + ' ' + suf;
+    }
+    function esc(s) {
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function loadSchedule() {
+        var raw;
+        try { raw = localStorage.getItem('uq_schedule'); } catch (e) {
+            console.warn('localStorage read failed', e); return null;
+        }
+        if (!raw) return null;
+        try { return JSON.parse(raw); } catch (pe) {
+            console.warn('Schedule parse failed', pe); return null;
+        }
+    }
+    function findNextIdx(classes, nowMin) {
+        for (var i = 0; i < classes.length; i++) {
+            if (totalMin(classes[i].time_h, classes[i].time_m) > nowMin) return i;
+        }
+        return -1;
+    }
+
+    // ── Upcoming class strip (between header and search, home state only) ─────
+    (function () {
+        var bar = document.getElementById('upcoming-bar');
+        if (!bar) return;   // not rendered when route/dest active
+
+        function render() {
+            var sched = loadSchedule();
+            if (!sched || !Array.isArray(sched.classes) || !sched.classes.length) {
+                bar.style.display = 'none'; return;
+            }
+            var now    = simNow();
+            var nowMin = totalMin(now.getHours(), now.getMinutes());
+            var idx    = findNextIdx(sched.classes, nowMin);
+            if (idx < 0) { bar.style.display = 'none'; return; }
+
+            var cls     = sched.classes[idx];
+            var dirHref = '/?to=' + encodeURIComponent(cls.to)
+                + (cls.from ? '&from=' + encodeURIComponent(cls.from) : '');
+
+            bar.innerHTML =
+                '<div class="ub-top">'
+                    + '<span class="ub-badge">Up next</span>'
+                    + '<span class="ub-time">' + fmtTime(cls.time_h, cls.time_m) + '</span>'
+                + '</div>'
+                + '<div class="ub-code">' + esc(cls.code) + '</div>'
+                + (cls.type ? '<div class="ub-type">' + esc(cls.type) + '</div>' : '')
+                + ((cls.building || cls.room)
+                    ? '<div class="ub-loc">'
+                        + '<svg width="11" height="14" viewBox="0 0 24 30" fill="none" aria-hidden="true">'
+                        + '<path d="M12 1C7 1 3 5 3 10c0 6.75 9 19 9 19s9-12.25 9-19'
+                        + 'c0-5-4-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"'
+                        + ' fill="#51247A"/></svg>'
+                        + esc((cls.building || '') + (cls.room ? ' · Rm ' + cls.room : ''))
+                        + '</div>'
+                    : '')
+                + '<div class="ub-footer">'
+                    + (cls.walk_min
+                        ? '<span class="ub-walk">🚶 ~' + cls.walk_min + ' min walk</span>'
+                        : '<span></span>')
+                    + '<a class="ub-dir-btn" href="' + dirHref + '">'
+                        + 'Get Directions '
+                        + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"'
+                        + ' stroke="currentColor" stroke-width="2.5" stroke-linecap="round"'
+                        + ' stroke-linejoin="round" aria-hidden="true">'
+                        + '<path d="M5 12h14M12 5l7 7-7 7"/></svg>'
+                    + '</a>'
+                + '</div>';
+
+            bar.style.display = '';
+        }
+
+        render();
+        setInterval(render, 60000);   // refresh every minute
+    }());
+
+    // ── Timetable slide-in panel ──────────────────────────────────────────────
+    (function () {
+        var panel    = document.getElementById('tt-panel');
+        var overlay  = document.getElementById('tt-panel-overlay');
+        var openBtn  = document.getElementById('timetable-topbar-btn');
+        var closeBtn = document.getElementById('tt-panel-close');
+        var scrollEl = document.getElementById('tt-panel-scroll');
+        var dateEl   = document.getElementById('tt-panel-date');
+        if (!panel || !openBtn || !scrollEl) return;
+
+        function renderTimetable() {
+            var d = new Date();
+            var DAYS   = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+            var MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN',
+                          'JUL','AUG','SEP','OCT','NOV','DEC'];
+            if (dateEl) {
+                dateEl.textContent = DAYS[d.getDay()] + ' '
+                    + d.getDate() + ' ' + MONTHS[d.getMonth()];
+            }
+
+            var sched = loadSchedule();
+            if (!sched) {
+                scrollEl.innerHTML = '<div class="tt-empty">No timetable loaded.'
+                    + '<br><a href="/onboarding/">Set up your schedule →</a></div>';
+                return;
+            }
+            if (!Array.isArray(sched.classes) || !sched.classes.length) {
+                scrollEl.innerHTML = '<div class="tt-empty">No classes in your timetable.</div>';
+                return;
+            }
+
+            var now     = simNow();
+            var nowMin  = totalMin(now.getHours(), now.getMinutes());
+            var nextIdx = findNextIdx(sched.classes, nowMin);
+
+            var html = '';
+            sched.classes.forEach(function (cls, idx) {
+                var cMin    = totalMin(cls.time_h, cls.time_m);
+                var isPast  = cMin <= nowMin;
+                var isNext  = idx === nextIdx;
+                var cardCls = 'tp-card' + (isNext ? ' tp-next' : (isPast ? ' tp-past' : ''));
+                var dirHref = '/?to=' + encodeURIComponent(cls.to)
+                    + (cls.from ? '&from=' + encodeURIComponent(cls.from) : '');
+                var pinFill = isNext ? '#51247A'
+                    : (isPast ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.65)');
+
+                html += '<div class="' + cardCls + '">';
+                html += '<div class="tp-card-top">';
+                html += '<span class="tp-time">' + fmtTime(cls.time_h, cls.time_m) + '</span>';
+                if (isNext) html += '<span class="tp-badge">Up next</span>';
+                html += '</div>';
+                html += '<div class="tp-code">' + esc(cls.code) + '</div>';
+                if (cls.type) html += '<div class="tp-type">' + esc(cls.type) + '</div>';
+                if (cls.building || cls.room) {
+                    html += '<div class="tp-loc">'
+                        + '<svg width="11" height="14" viewBox="0 0 24 30" fill="none" aria-hidden="true">'
+                        + '<path d="M12 1C7 1 3 5 3 10c0 6.75 9 19 9 19s9-12.25 9-19'
+                        + 'c0-5-4-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"'
+                        + ' fill="' + pinFill + '"/></svg>'
+                        + esc((cls.building || '') + (cls.room ? ' · Rm ' + cls.room : ''))
+                        + '</div>';
+                }
+                if (cls.walk_min) {
+                    html += '<div class="tp-walk">🚶 ~' + cls.walk_min + ' min walk</div>';
+                }
+                html += '<a class="tp-dir" href="' + dirHref + '">'
+                    + 'Get Directions '
+                    + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"'
+                    + ' stroke="currentColor" stroke-width="2.5" stroke-linecap="round"'
+                    + ' stroke-linejoin="round" aria-hidden="true">'
+                    + '<path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
+                html += '</div>';
+            });
+            scrollEl.innerHTML = html;
+        }
+
+        function openPanel() {
+            renderTimetable();
+            panel.classList.add('open');
+            panel.setAttribute('aria-hidden', 'false');
+            openBtn.setAttribute('aria-expanded', 'true');
+            if (overlay) {
+                overlay.classList.add('open');
+                overlay.setAttribute('aria-hidden', 'false');
+            }
+        }
+
+        function closePanel() {
+            panel.classList.remove('open');
+            panel.setAttribute('aria-hidden', 'true');
+            openBtn.setAttribute('aria-expanded', 'false');
+            if (overlay) {
+                overlay.classList.remove('open');
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+        }
+
+        openBtn.addEventListener('click', openPanel);
+        if (closeBtn) closeBtn.addEventListener('click', closePanel);
+        if (overlay)  overlay.addEventListener('click',  closePanel);
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && panel.classList.contains('open')) closePanel();
         });
+    }());
+
+}());
+</script>
+
+<!-- ── In-app reminder toast ── -->
+<div id="uq-toast" class="uq-toast uq-toast-hidden"
+     role="alert" aria-live="assertive" aria-atomic="true">
+    <button class="uq-toast-close" id="uq-toast-close" type="button"
+            aria-label="Dismiss notification">×</button>
+    <div class="uq-toast-inner">
+        <span class="uq-toast-bell" aria-hidden="true">🔔</span>
+        <div>
+            <div class="uq-toast-title" id="uq-toast-title">Time to leave!</div>
+            <div class="uq-toast-body"  id="uq-toast-body"></div>
+        </div>
+    </div>
+    <a class="uq-toast-dir" id="uq-toast-dir" href="/">
+        Get Directions
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+    </a>
+    <div class="uq-toast-bar" id="uq-toast-bar"></div>
+</div>
+
+<script>
+/* ── In-app toast + departure reminder scheduler ── */
+(function () {
+    var toast   = document.getElementById('uq-toast');
+    var titleEl = document.getElementById('uq-toast-title');
+    var bodyEl  = document.getElementById('uq-toast-body');
+    var dirEl   = document.getElementById('uq-toast-dir');
+    var barEl   = document.getElementById('uq-toast-bar');
+    var closeBtn = document.getElementById('uq-toast-close');
+    var toastTimer;
+
+    // Exposed globally so other scripts (or the browser console) can call it
+    globalThis.showUQToast = function (opts) {
+        var title   = opts.title   || 'Reminder';
+        var body    = opts.body    || '';
+        var dirHref = opts.dirHref || null;
+        var dur     = opts.dur     !== undefined ? opts.dur : 8000;
+
+        titleEl.textContent = title;
+        bodyEl.textContent  = body;
+
+        if (dirHref) { dirEl.href = dirHref; dirEl.style.display = ''; }
+        else         { dirEl.style.display = 'none'; }
+
+        // Animate in
+        toast.classList.remove('uq-toast-hidden');
+
+        // Progress bar
+        barEl.style.transition = 'none';
+        barEl.style.width = '100%';
+        void barEl.offsetWidth;   // flush layout
+        barEl.style.transition = 'width ' + dur + 'ms linear';
+        barEl.style.width = '0%';
+
+        // Auto-dismiss
+        if (toastTimer) clearTimeout(toastTimer);
+        if (dur > 0) {
+            toastTimer = setTimeout(function () {
+                toast.classList.add('uq-toast-hidden');
+            }, dur);
+        }
+    };
+
+    closeBtn.addEventListener('click', function () {
+        if (toastTimer) clearTimeout(toastTimer);
+        toast.classList.add('uq-toast-hidden');
+    });
+
+    // ── Schedule in-app departure reminders from localStorage ────────────────
+    var remindersOn;
+    try { remindersOn = localStorage.getItem('uq_reminders') === '1'; } catch (lsErr) { remindersOn = false; }
+    if (!remindersOn) return;
+
+    // loadSchedule() + simNow() already defined by the shared-helpers block above
+    var sched = loadSchedule();
+    if (!sched || !Array.isArray(sched.classes)) return;
+
+    var now = simNow();
+
+    sched.classes.forEach(function (cls) {
+        var classTime = new Date(now);
+        classTime.setHours(cls.time_h, cls.time_m, 0, 0);
+
+        // Fire (walk_min + 2 min buffer) before class
+        var notifyAt = new Date(classTime.getTime() - (cls.walk_min + 2) * 60000);
+        var delay    = notifyAt.getTime() - now.getTime();
+
+        if (delay > 0) {
+            setTimeout(function () {
+                globalThis.showUQToast({
+                    title:   'Time to leave for ' + cls.code + '!',
+                    body:    cls.type + ' · ' + cls.building + ', Room ' + cls.room
+                             + '  ·  🚶 ' + cls.walk_min + '-min walk',
+                    dirHref: '/?to=' + encodeURIComponent(cls.to)
+                             + (cls.from ? '&from=' + encodeURIComponent(cls.from) : ''),
+                });
+            }, delay);
+            console.log(
+                '[UQ Reminders] Toast for ' + cls.code + ' scheduled in ~' +
+                Math.round(delay / 60000) + ' min'
+            );
+        }
     });
 }());
 </script>
