@@ -1634,5 +1634,113 @@
 
 }());
 </script>
+
+<!-- ── In-app reminder toast ── -->
+<div id="uq-toast" class="uq-toast uq-toast-hidden"
+     role="alert" aria-live="assertive" aria-atomic="true">
+    <button class="uq-toast-close" id="uq-toast-close" type="button"
+            aria-label="Dismiss notification">×</button>
+    <div class="uq-toast-inner">
+        <span class="uq-toast-bell" aria-hidden="true">🔔</span>
+        <div>
+            <div class="uq-toast-title" id="uq-toast-title">Time to leave!</div>
+            <div class="uq-toast-body"  id="uq-toast-body"></div>
+        </div>
+    </div>
+    <a class="uq-toast-dir" id="uq-toast-dir" href="/">
+        Get Directions
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+    </a>
+    <div class="uq-toast-bar" id="uq-toast-bar"></div>
+</div>
+
+<script>
+/* ── In-app toast + departure reminder scheduler ── */
+(function () {
+    var toast   = document.getElementById('uq-toast');
+    var titleEl = document.getElementById('uq-toast-title');
+    var bodyEl  = document.getElementById('uq-toast-body');
+    var dirEl   = document.getElementById('uq-toast-dir');
+    var barEl   = document.getElementById('uq-toast-bar');
+    var closeBtn = document.getElementById('uq-toast-close');
+    var toastTimer;
+
+    // Exposed globally so other scripts (or the browser console) can call it
+    globalThis.showUQToast = function (opts) {
+        var title   = opts.title   || 'Reminder';
+        var body    = opts.body    || '';
+        var dirHref = opts.dirHref || null;
+        var dur     = opts.dur     !== undefined ? opts.dur : 8000;
+
+        titleEl.textContent = title;
+        bodyEl.textContent  = body;
+
+        if (dirHref) { dirEl.href = dirHref; dirEl.style.display = ''; }
+        else         { dirEl.style.display = 'none'; }
+
+        // Animate in
+        toast.classList.remove('uq-toast-hidden');
+
+        // Progress bar
+        barEl.style.transition = 'none';
+        barEl.style.width = '100%';
+        void barEl.offsetWidth;   // flush layout
+        barEl.style.transition = 'width ' + dur + 'ms linear';
+        barEl.style.width = '0%';
+
+        // Auto-dismiss
+        if (toastTimer) clearTimeout(toastTimer);
+        if (dur > 0) {
+            toastTimer = setTimeout(function () {
+                toast.classList.add('uq-toast-hidden');
+            }, dur);
+        }
+    };
+
+    closeBtn.addEventListener('click', function () {
+        if (toastTimer) clearTimeout(toastTimer);
+        toast.classList.add('uq-toast-hidden');
+    });
+
+    // ── Schedule in-app departure reminders from localStorage ────────────────
+    var remindersOn;
+    try { remindersOn = localStorage.getItem('uq_reminders') === '1'; } catch (lsErr) { remindersOn = false; }
+    if (!remindersOn) return;
+
+    // loadSchedule() + simNow() already defined by the shared-helpers block above
+    var sched = loadSchedule();
+    if (!sched || !Array.isArray(sched.classes)) return;
+
+    var now = simNow();
+
+    sched.classes.forEach(function (cls) {
+        var classTime = new Date(now);
+        classTime.setHours(cls.time_h, cls.time_m, 0, 0);
+
+        // Fire (walk_min + 2 min buffer) before class
+        var notifyAt = new Date(classTime.getTime() - (cls.walk_min + 2) * 60000);
+        var delay    = notifyAt.getTime() - now.getTime();
+
+        if (delay > 0) {
+            setTimeout(function () {
+                globalThis.showUQToast({
+                    title:   'Time to leave for ' + cls.code + '!',
+                    body:    cls.type + ' · ' + cls.building + ', Room ' + cls.room
+                             + '  ·  🚶 ' + cls.walk_min + '-min walk',
+                    dirHref: '/?to=' + encodeURIComponent(cls.to)
+                             + (cls.from ? '&from=' + encodeURIComponent(cls.from) : ''),
+                });
+            }, delay);
+            console.log(
+                '[UQ Reminders] Toast for ' + cls.code + ' scheduled in ~' +
+                Math.round(delay / 60000) + ' min'
+            );
+        }
+    });
+}());
+</script>
 </body>
 </html>
