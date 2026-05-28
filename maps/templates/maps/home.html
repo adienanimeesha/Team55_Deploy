@@ -1495,7 +1495,7 @@
             if (idx < 0) { bar.style.display = 'none'; return; }
 
             var cls     = sched.classes[idx];
-            var dirHref = '/?to=' + encodeURIComponent(cls.to)
+            var dirHref = '/map/?to=' + encodeURIComponent(cls.to)
                 + (cls.from ? '&from=' + encodeURIComponent(cls.from) + '&get_directions=1' : '');
 
             bar.innerHTML =
@@ -1575,7 +1575,7 @@
                 var isPast  = cMin <= nowMin;
                 var isNext  = idx === nextIdx;
                 var cardCls = 'tp-card' + (isNext ? ' tp-next' : (isPast ? ' tp-past' : ''));
-                var dirHref = '/?to=' + encodeURIComponent(cls.to)
+                var dirHref = '/map/?to=' + encodeURIComponent(cls.to)
                     + (cls.from ? '&from=' + encodeURIComponent(cls.from) + '&get_directions=1' : '');
                 var pinFill = isNext ? '#51247A'
                     : (isPast ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.65)');

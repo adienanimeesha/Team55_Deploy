@@ -434,9 +434,7 @@
 <div class="shell">
 <div class="phone">
 
-    {# ══════════════════════════════════════════════
-       STEP 1 — Welcome
-    ══════════════════════════════════════════════ #}
+    <!-- Step 1: Welcome -->
     <div class="step active" id="step-1">
 
         <!-- Top bar: no back button on first step -->
@@ -468,9 +466,7 @@
 
     </div>
 
-    {# ══════════════════════════════════════════════
-       STEP 2 — Timetable preview (dummy data)
-    ══════════════════════════════════════════════ #}
+    <!-- Step 2: Timetable preview -->
     <div class="step hidden-right" id="step-2">
 
         <!-- Top bar: back to step 1 -->
@@ -582,9 +578,7 @@
 
     </div>
 
-    {# ══════════════════════════════════════════════
-       STEP 3 — Permissions (reminders)
-    ══════════════════════════════════════════════ #}
+    <!-- Step 3: Permissions -->
     <div class="step hidden-right" id="step-3">
 
         <!-- Top bar: back to step 2 (timetable) or step 1 (welcome) depending on path -->
@@ -686,10 +680,13 @@
         goTo(1);
     });
 
-    // Skip for now → reminders step, back returns to Welcome
+    // Skip for now → enter the map without timetable/reminder setup
     document.getElementById('btn-skip').addEventListener('click', function () {
-        remindersPrevStep = 0;
-        goTo(2);
+        try {
+            localStorage.setItem('uq_onboarded', '1');
+            localStorage.setItem('uq_reminders', '0');
+        } catch (storageErr) { console.warn('localStorage unavailable', storageErr); }
+        globalThis.location.href = '/map/';
     });
 
     // ── Departure Reminders toggle ───────────────────────────────────────────
@@ -720,7 +717,7 @@
             localStorage.setItem('uq_reminders', isOn ? '1' : '0');
             localStorage.setItem('uq_onboarded', '1');
         } catch (storageErr) { console.warn('localStorage unavailable', storageErr); }
-        globalThis.location.href = '/';
+        globalThis.location.href = '/map/';
     });
 
     // ── "Start navigating!" — save schedule again + advance to reminders ────
