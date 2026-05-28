@@ -1674,6 +1674,31 @@
     var barEl   = document.getElementById('uq-toast-bar');
     var closeBtn = document.getElementById('uq-toast-close');
     var toastTimer;
+    var drag = {
+        active: false,
+        startX: 0,
+        currentX: 0,
+        pointerId: null
+    };
+
+    function resetToastMotion() {
+        toast.classList.remove('uq-toast-dragging');
+        toast.style.transform = '';
+        toast.style.opacity = '';
+        toast.style.transition = '';
+    }
+
+    function dismissToast(direction) {
+        if (toastTimer) clearTimeout(toastTimer);
+        toast.classList.remove('uq-toast-dragging');
+        toast.style.transition = 'transform 0.28s ease-in, opacity 0.28s ease-in';
+        toast.style.transform = 'translateX(calc(-50% + ' + (direction * 120) + 'vw)) translateY(0) rotate(' + (direction * 8) + 'deg)';
+        toast.style.opacity = '0';
+        setTimeout(function () {
+            toast.classList.add('uq-toast-hidden');
+            resetToastMotion();
+        }, 280);
+    }
 
     // Exposed globally so other scripts (or the browser console) can call it
     globalThis.showUQToast = function (opts) {
@@ -1687,6 +1712,8 @@
 
         if (dirHref) { dirEl.href = dirHref; dirEl.style.display = ''; }
         else         { dirEl.style.display = 'none'; }
+
+        resetToastMotion();
 
         // Animate in
         toast.classList.remove('uq-toast-hidden');
@@ -1708,9 +1735,52 @@
     };
 
     closeBtn.addEventListener('click', function () {
-        if (toastTimer) clearTimeout(toastTimer);
-        toast.classList.add('uq-toast-hidden');
+        dismissToast(1);
     });
+
+    toast.addEventListener('pointerdown', function (e) {
+        if (toast.classList.contains('uq-toast-hidden')) return;
+        if (e.target.closest('a, button')) return;
+
+        drag.active = true;
+        drag.startX = e.clientX;
+        drag.currentX = e.clientX;
+        drag.pointerId = e.pointerId;
+        toast.classList.add('uq-toast-dragging');
+        try { toast.setPointerCapture(e.pointerId); } catch (captureErr) {}
+    });
+
+    toast.addEventListener('pointermove', function (e) {
+        if (!drag.active || e.pointerId !== drag.pointerId) return;
+
+        drag.currentX = e.clientX;
+        var dx = drag.currentX - drag.startX;
+        var rotate = Math.max(-7, Math.min(7, dx / 28));
+        toast.style.transform = 'translateX(calc(-50% + ' + dx + 'px)) translateY(0) rotate(' + rotate + 'deg)';
+        toast.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / 260));
+    });
+
+    function endDrag(e) {
+        if (!drag.active || e.pointerId !== drag.pointerId) return;
+
+        var dx = drag.currentX - drag.startX;
+        drag.active = false;
+        drag.pointerId = null;
+
+        if (Math.abs(dx) > 96) {
+            dismissToast(dx > 0 ? 1 : -1);
+            return;
+        }
+
+        toast.classList.remove('uq-toast-dragging');
+        toast.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+        toast.style.transform = 'translateX(-50%) translateY(0)';
+        toast.style.opacity = '1';
+        setTimeout(resetToastMotion, 220);
+    }
+
+    toast.addEventListener('pointerup', endDrag);
+    toast.addEventListener('pointercancel', endDrag);
 
     // ── Schedule in-app departure reminders from localStorage ────────────────
     var remindersOn;
@@ -1737,7 +1807,7 @@
                     title:   'Time to leave for ' + cls.code + '!',
                     body:    cls.type + ' · ' + cls.building + ', Room ' + cls.room
                              + '  ·  🚶 ' + cls.walk_min + '-min walk',
-                    dirHref: '/?to=' + encodeURIComponent(cls.to)
+                    dirHref: '/map/?to=' + encodeURIComponent(cls.to)
                              + (cls.from ? '&from=' + encodeURIComponent(cls.from) : ''),
                 });
             }, delay);
