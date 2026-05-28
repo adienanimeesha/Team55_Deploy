@@ -531,7 +531,7 @@
                     Building 63 &mdash; Room 348 (Lecture Theatre)
                 </div>
                 <a class="class-get-dir"
-                   href="{% url 'home' %}?to=348&from=213"
+                   href="{% url 'home' %}?to=348&from=213&get_directions=1"
                    style="background:rgba(255,255,255,0.92);color:#51247A;">
                     Get Directions
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -556,7 +556,7 @@
                     Building 69 &mdash; Room 304 (Computing Lab)
                 </div>
                 <a class="class-get-dir"
-                   href="{% url 'home' %}?to=304&from=348"
+                   href="{% url 'home' %}?to=304&from=348&get_directions=1"
                    style="background:rgba(255,255,255,0.92);color:#51247A;">
                     Get Directions
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -673,12 +673,20 @@
         goTo(remindersPrevStep);
     });
 
-    // Connect to My Timetable → step-2 (timetable preview, index 1)
+    // Connect to My Timetable → save schedule + go to timetable step
     document.getElementById('btn-connect').addEventListener('click', function () {
+        var schedule = {
+            classes: [
+                { code:'COMP2002', type:'Tutorial',  building:'Building 62', room:'213', time_h:9,  time_m:0,  to:'213', from:'',    walk_min:10 },
+                { code:'MATH1051', type:'Lecture',   building:'Building 63', room:'348', time_h:11, time_m:0,  to:'348', from:'213', walk_min:12 },
+                { code:'ENGG1200', type:'Tutorial',  building:'Building 69', room:'304', time_h:14, time_m:0,  to:'304', from:'348', walk_min:8  }
+            ]
+        };
+        try { localStorage.setItem('uq_schedule', JSON.stringify(schedule)); } catch (e) { console.warn('Could not save schedule', e); }
         goTo(1);
     });
 
-    // Skip for now → step-3 (reminders, index 2), back returns to Welcome
+    // Skip for now → reminders step, back returns to Welcome
     document.getElementById('btn-skip').addEventListener('click', function () {
         remindersPrevStep = 0;
         goTo(2);
@@ -687,13 +695,10 @@
     // ── Departure Reminders toggle ───────────────────────────────────────────
     var toggleCard   = document.getElementById('toggle-reminders');
     var toggleSwitch = document.getElementById('switch-reminders');
-    var testBtn      = document.getElementById('btn-test-notif');
 
     function flipToggle() {
         var on = toggleSwitch.classList.toggle('on');
         toggleCard.setAttribute('aria-checked', on ? 'true' : 'false');
-        // Show/hide the test button alongside the toggle state
-        testBtn.style.display = on ? 'block' : 'none';
     }
 
     toggleCard.addEventListener('click', flipToggle);
@@ -705,265 +710,29 @@
         if (localStorage.getItem('uq_reminders') === '1') {
             toggleSwitch.classList.add('on');
             toggleCard.setAttribute('aria-checked', 'true');
-            testBtn.style.display = 'block';
         }
     } catch (storageReadErr) { console.warn('localStorage unavailable', storageReadErr); }
 
-    // ── "Got it, let's go!" — save preference then navigate ────────────────
-    // Departure scheduling happens on the home page (reads uq_schedule +
-    // uq_reminders from localStorage and fires in-app toasts from there).
+    // ── "Got it, let's go!" — save preferences + mark onboarded + navigate ──
     document.getElementById('btn-permissions-done').addEventListener('click', function () {
         var isOn = toggleSwitch.classList.contains('on');
-        try { localStorage.setItem('uq_reminders', isOn ? '1' : '0'); } catch (storageErr) { console.warn('localStorage unavailable', storageErr); }
-        globalThis.location.href = '/';   // → home
-    });
-
-    // ── In-page test toast (shown on this page, no OS permission needed) ─────
-    testBtn.addEventListener('click', function () {
-        showOnboardingToast({
-            title:  'Time to leave for COMP2002! 🔔',
-            body:   'Tutorial · Building 62, Room 213  ·  🚶 10-min walk',
-        });
-    });
-
-    function showOnboardingToast(opts) {
-        var el = document.getElementById('ob-toast');
-        el.querySelector('.ob-toast-title').textContent = opts.title || '';
-        el.querySelector('.ob-toast-body').textContent  = opts.body  || '';
-
-        el.classList.remove('ob-toast-hidden');
-
-        var bar = el.querySelector('.ob-toast-bar');
-        bar.style.transition = 'none';
-        bar.style.width = '100%';
-        // Reading offsetWidth forces a layout flush so the browser registers the
-        // width:100% before we re-apply the transition (otherwise it skips the animation).
-        if (bar.offsetWidth >= 0) { bar.style.transition = 'width 6000ms linear'; }
-        bar.style.width = '0%';
-
-        if (el._timer) clearTimeout(el._timer);
-        el._timer = setTimeout(function () { el.classList.add('ob-toast-hidden'); }, 6000);
-    }
-
-    document.getElementById('ob-toast-close').addEventListener('click', function () {
-        var el = document.getElementById('ob-toast');
-        if (el._timer) clearTimeout(el._timer);
-        el.classList.add('ob-toast-hidden');
-    });
-
-    // ── ICS upload + timetable preview ──────────────────────────────────────
-
-    var DEMO_SCHEDULE = {
-        classes: [
-            { code:'COMP2002', type:'Tutorial',  building:'Building 62', room:'213', time_h:9,  time_m:0,  to:'213', from:'',    walk_min:10 },
-            { code:'MATH1051', type:'Lecture',   building:'Building 63', room:'348', time_h:11, time_m:0,  to:'348', from:'213', walk_min:12 },
-            { code:'ENGG1200', type:'Tutorial',  building:'Building 69', room:'304', time_h:14, time_m:0,  to:'304', from:'348', walk_min:8  }
-        ]
-    };
-
-    // CSRF helper
-    function getCsrfToken() {
-        var match = document.cookie.match(/csrftoken=([^;]+)/);
-        return match ? decodeURIComponent(match[1]) : '';
-    }
-
-    // Convert API response classes → uq_schedule format (today's classes only).
-    // Falls back to all classes if none match today's weekday.
-    function apiClassesToSchedule(apiClasses) {
-        var todayDow = new Date().getDay();   // 0=Sun … 6=Sat
-
-        // Sort by start_time
-        var sorted = apiClasses.slice().sort(function (a, b) {
-            return new Date(a.start_time) - new Date(b.start_time);
-        });
-
-        // Prefer today's day-of-week; fall back to all if none match
-        var todayOnly = sorted.filter(function (c) {
-            return new Date(c.start_time).getDay() === todayDow;
-        });
-        var source = todayOnly.length ? todayOnly : sorted;
-
-        // Deduplicate by code+time (recurring events repeat same slot)
-        var seen = {};
-        var unique = source.filter(function (c) {
-            var dt  = new Date(c.start_time);
-            var key = c.course_code + '_' + dt.getHours() + '_' + dt.getMinutes();
-            if (seen[key]) return false;
-            seen[key] = true;
-            return true;
-        });
-
-        return {
-            classes: unique.map(function (c, i) {
-                var dt   = new Date(c.start_time);
-                var prev = i > 0 ? unique[i - 1] : null;
-                return {
-                    code:     c.course_code,
-                    type:     c.session_type,
-                    building: c.building,
-                    room:     c.room_number,
-                    time_h:   dt.getHours(),
-                    time_m:   dt.getMinutes(),
-                    to:       c.room_number,
-                    from:     prev ? prev.room_number : '',
-                    walk_min: c.estimated_travel_time_minutes || 10,
-                };
-            })
-        };
-    }
-
-    // Persist schedule to localStorage
-    function saveSchedule(sched) {
-        try { localStorage.setItem('uq_schedule', JSON.stringify(sched)); }
-        catch (e) { console.warn('Could not save schedule', e); }
-    }
-
-    // ── Shared render helpers ────────────────────────────────────────────────
-    function pad(n)  { return n < 10 ? '0' + n : '' + n; }
-    function fmtH(h, m) {
-        var suf = h < 12 ? 'AM' : 'PM';
-        return (h % 12 || 12) + ':' + pad(m) + ' ' + suf;
-    }
-    function esc(s) {
-        return String(s).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-    }
-
-    // Render class cards into #tt-class-list and switch to preview sub-state
-    function showPreview(schedule) {
-        var listEl    = document.getElementById('tt-class-list');
-        var dateEl    = document.getElementById('today-date');
-        var uploadSt  = document.getElementById('tt-upload-state');
-        var previewSt = document.getElementById('tt-preview-state');
-
-        // Date label
-        var d      = new Date();
-        var DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-        var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        if (dateEl) {
-            dateEl.textContent = 'Today — ' + DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
-        }
-
-        var now    = new Date();
-        var nowMin = now.getHours() * 60 + now.getMinutes();
-
-        // Find next class
-        var nextIdx = -1;
-        schedule.classes.forEach(function (c, i) {
-            if (nextIdx < 0 && c.time_h * 60 + c.time_m > nowMin) nextIdx = i;
-        });
-
-        var PIN_NEXT  = '#51247A';
-        var PIN_OTHER = 'rgba(255,255,255,0.65)';
-        var PIN_PATH  = 'M12 1C7 1 3 5 3 10c0 6.75 9 19 9 19s9-12.25 9-19c0-5-4-9-9-9zm0 13.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z';
-        var DIR_ARROW = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
-
-        listEl.innerHTML = schedule.classes.map(function (c, i) {
-            var isNext  = i === nextIdx;
-            var pinFill = isNext ? PIN_NEXT : PIN_OTHER;
-            var dirStyle = isNext ? '' : 'background:rgba(255,255,255,0.92);color:#51247A;';
-            var dirHref  = '/?to=' + encodeURIComponent(c.to)
-                         + (c.from ? '&from=' + encodeURIComponent(c.from) : '');
-            return (
-                '<div class="class-card' + (isNext ? ' next' : '') + '">'
-                + '<div class="class-card-top">'
-                +   '<span class="class-time">' + fmtH(c.time_h, c.time_m) + '</span>'
-                +   (isNext ? '<span class="class-next-badge">Up next</span>' : '')
-                + '</div>'
-                + '<div class="class-code">' + esc(c.code) + '</div>'
-                + '<div class="class-type">' + esc(c.type) + '</div>'
-                + '<div class="class-location">'
-                +   '<svg width="12" height="15" viewBox="0 0 24 30" fill="none" aria-hidden="true">'
-                +     '<path d="' + PIN_PATH + '" fill="' + pinFill + '"/></svg>'
-                +   esc(c.building) + ' &mdash; Room ' + esc(c.room)
-                + '</div>'
-                + '<a class="class-get-dir" href="' + dirHref + '" style="' + dirStyle + '">'
-                +   'Get Directions ' + DIR_ARROW
-                + '</a>'
-                + '</div>'
-            );
-        }).join('');
-
-        uploadSt.style.display  = 'none';
-        previewSt.style.display = 'flex';
-        previewSt.style.flexDirection = 'column';
-    }
-
-    // Status helper
-    function setStatus(msg, isError) {
-        var el = document.getElementById('tt-upload-status');
-        el.innerHTML = msg;
-        el.className = 'tt-upload-status' + (isError ? ' is-error' : '');
-    }
-
-    // Upload the .ics file to the backend
-    async function uploadICS(file) {
-        setStatus('<span class="tt-spinner"></span>Reading your timetable…');
-
-        var formData = new FormData();
-        formData.append('ics_file', file);
-
         try {
-            var resp = await fetch('/api/timetable/upload-timetable/', {
-                method: 'POST',
-                body:   formData,
-                headers: { 'X-CSRFToken': getCsrfToken() },
-            });
-            var data = await resp.json();
-
-            if (resp.ok && data.timetable && data.timetable.classes) {
-                var sched = apiClassesToSchedule(data.timetable.classes);
-                if (sched.classes.length) {
-                    setStatus('');
-                } else {
-                    setStatus('⚠️ No classes found for today — showing full timetable.');
-                    sched = apiClassesToSchedule(data.timetable.classes);
-                }
-                saveSchedule(sched);
-                showPreview(sched);
-            } else {
-                setStatus('❌ Couldn\'t read file — is it a valid UQ timetable .ics?', true);
-            }
-        } catch (netErr) {
-            setStatus('❌ Network error — please try again.', true);
-            console.warn('ICS upload failed', netErr);
-        }
-    }
-
-    // Wire up the drop area button + hidden file input
-    var dropBtn  = document.getElementById('tt-drop-area');
-    var fileInput = document.getElementById('tt-ics-input');
-
-    dropBtn.addEventListener('click', function () { fileInput.click(); });
-
-    fileInput.addEventListener('change', function () {
-        if (fileInput.files && fileInput.files[0]) {
-            uploadICS(fileInput.files[0]);
-        }
+            localStorage.setItem('uq_reminders', isOn ? '1' : '0');
+            localStorage.setItem('uq_onboarded', '1');
+        } catch (storageErr) { console.warn('localStorage unavailable', storageErr); }
+        globalThis.location.href = '/';
     });
 
-    // Drag-and-drop
-    dropBtn.addEventListener('dragover', function (e) {
-        e.preventDefault();
-        dropBtn.classList.add('dragover');
-    });
-    dropBtn.addEventListener('dragleave', function () {
-        dropBtn.classList.remove('dragover');
-    });
-    dropBtn.addEventListener('drop', function (e) {
-        e.preventDefault();
-        dropBtn.classList.remove('dragover');
-        var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-        if (file) uploadICS(file);
-    });
-
-    // "Use demo timetable instead"
-    document.getElementById('btn-use-demo').addEventListener('click', function () {
-        saveSchedule(DEMO_SCHEDULE);
-        showPreview(DEMO_SCHEDULE);
-    });
-
-    // "Start navigating!" — schedule already saved by upload/demo; just advance
+    // ── "Start navigating!" — save schedule again + advance to reminders ────
     document.getElementById('btn-start').addEventListener('click', function () {
+        var schedule = {
+            classes: [
+                { code:'COMP2002', type:'Tutorial',  building:'Building 62', room:'213', time_h:9,  time_m:0,  to:'213', from:'',    walk_min:10 },
+                { code:'MATH1051', type:'Lecture',   building:'Building 63', room:'348', time_h:11, time_m:0,  to:'348', from:'213', walk_min:12 },
+                { code:'ENGG1200', type:'Tutorial',  building:'Building 69', room:'304', time_h:14, time_m:0,  to:'304', from:'348', walk_min:8  }
+            ]
+        };
+        try { localStorage.setItem('uq_schedule', JSON.stringify(schedule)); } catch (e) { console.warn('Could not save schedule', e); }
         remindersPrevStep = 1;
         goTo(2);
     });

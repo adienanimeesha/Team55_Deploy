@@ -8,6 +8,13 @@
     <link rel="stylesheet" href="https://api.mazemap.com/js/v2.2.6/mazemap.min.css">
     <script src="https://api.mazemap.com/js/v2.2.6/mazemap.min.js"></script>
     {% include "maps/partials/home_styles.html" %}
+    <script>
+        try {
+            if (!localStorage.getItem('uq_onboarded') && !localStorage.getItem('uq_schedule')) {
+                globalThis.location.replace('/onboarding/');
+            }
+        } catch (_) {}
+    </script>
 </head>
 <body>
 <div class="app">
@@ -1489,7 +1496,7 @@
 
             var cls     = sched.classes[idx];
             var dirHref = '/?to=' + encodeURIComponent(cls.to)
-                + (cls.from ? '&from=' + encodeURIComponent(cls.from) : '');
+                + (cls.from ? '&from=' + encodeURIComponent(cls.from) + '&get_directions=1' : '');
 
             bar.innerHTML =
                 '<div class="ub-top">'
@@ -1569,7 +1576,7 @@
                 var isNext  = idx === nextIdx;
                 var cardCls = 'tp-card' + (isNext ? ' tp-next' : (isPast ? ' tp-past' : ''));
                 var dirHref = '/?to=' + encodeURIComponent(cls.to)
-                    + (cls.from ? '&from=' + encodeURIComponent(cls.from) : '');
+                    + (cls.from ? '&from=' + encodeURIComponent(cls.from) + '&get_directions=1' : '');
                 var pinFill = isNext ? '#51247A'
                     : (isPast ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.65)');
 
