@@ -1,1 +1,1 @@
-web: python manage.py collectstatic --noinput && gunicorn mvp.wsgi:application --bind 0.0.0.0:$PORT
+web: python manage.py migrate && python manage.py import_map data/nodes/Building62.csv data/nodes/Building63.csv data/nodes/building_69_nodes.csv && python manage.py import_geo_edges data/edges/Building62edges.csv --building "Building 62" && python manage.py import_map data/edges/Building63_edges.csv data/edges/building_69_edges.csv && python manage.py collectstatic --noinput && gunicorn mvp.wsgi:application --bind 0.0.0.0:$PORT
